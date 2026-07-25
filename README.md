@@ -1,14 +1,11 @@
 # MindScape
 
-**A memory reconstruction platform.** MindScape recovers a watched video from
-the EEG recorded while it played, and scores the result against the original.
+**A neural memory reconstruction platform.** MindScape transforms scalp EEG brainwave signals into explorable digital environments, recovering watched experiences and scoring the result against the original reference stimulus.
 
-The objective is measurable reconstruction fidelity — not artistic
-visualisation. Memories rather than dreams, precisely because a reference event
-exists: every claim the system makes can be checked against what was actually
-shown.
+> **"Entering Someone Else's Reality"** — What if memories, dreams, and emotions could become places you could physically enter and explore? Read our full vision & architecture: [`docs/VISION_AND_INSPIRATION.md`](docs/VISION_AND_INSPIRATION.md).
 
 ---
+
 
 ## Real human EEG
 
