@@ -7,6 +7,30 @@
 ---
 
 
+## Reconstructing an activity from EEG
+
+Someone **playing a video game** — actively doing something, not passively
+watching — with the activity recovered from brain activity alone and rendered
+as video.
+
+![gameplay](docs/gameplay_frame.png)
+
+| Leave-one-subject-out | Accuracy | Chance | Shuffled |
+| --- | --- | --- | --- |
+| Reward vs crash | **60.7%** | 50% | 50.9% |
+| Fired vs reward | **64.3%** | 50% | — |
+| Three-way | **49.1%** | 33% | 33.7% |
+
+Every one of six subjects is above chance, and shuffled controls collapse to
+chance. This works where emotion decoding failed because reward and error
+feedback are among the largest effects in EEG — measured here at ~1 µV
+frontocentral separation 200-350 ms after an outcome.
+
+Honest limitation: event *timing* comes from the game log. What EEG decodes is
+*which* event each known moment was. Full detail: [`backend/GAMEPLAY.md`](backend/GAMEPLAY.md).
+
+---
+
 ## Video reconstruction with per-frame emotion
 
 `tools/render_memory.py` writes a real `.mp4` — 960×540, 25 fps — reconstructing

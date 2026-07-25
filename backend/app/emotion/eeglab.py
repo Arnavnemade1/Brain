@@ -35,10 +35,30 @@ class EEGLABRecording:
 
     _data: np.memmap
 
+    #: Channel names that are never scalp EEG.
+    NON_EEG = {"ECG", "EKG", "EMG", "EOG", "VEOG", "HEOG", "RESP", "GSR", "TRIG", "STATUS"}
+
     @property
     def eeg_channels(self) -> List[int]:
-        """Indices of real scalp electrodes, excluding ECG/EMG."""
-        return [i for i in range(self.n_channels) if np.all(np.isfinite(self.positions[i]))]
+        """Indices of real scalp electrodes.
+
+        Prefers coordinates when the `.set` carries them, since that also
+        excludes physiological channels. Some BIDS exports keep positions in a
+        separate `electrodes.tsv` instead, leaving every coordinate NaN — in
+        that case fall back to names, rather than returning nothing and
+        silently producing zero-channel epochs downstream.
+        """
+        located = [
+            i for i in range(self.n_channels) if np.all(np.isfinite(self.positions[i]))
+        ]
+        if located:
+            return located
+
+        return [
+            i
+            for i, name in enumerate(self.channel_names)
+            if name.strip().upper() not in self.NON_EEG
+        ]
 
     @property
     def duration(self) -> float:
