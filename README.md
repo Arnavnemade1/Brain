@@ -7,6 +7,26 @@
 ---
 
 
+## Video reconstruction with per-frame emotion
+
+`tools/render_memory.py` writes a real `.mp4` — 960×540, 25 fps — reconstructing
+a viewing moment by moment: decoded valence and arousal at every instant, the
+trajectory on the affective circumplex, the nearest named emotion, and a marker
+where the subject clicked to say they felt something.
+
+![emotion frame](docs/emotion_frame.png)
+
+**The video renders correctly. The decoding underneath it largely does not.**
+Cross-subject emotion decoding failed outright — the shuffled control scored
+*higher* than the real model (38.9% vs 34.7% on quadrant). Within-subject,
+arousal is weakly readable (r = +0.19, 58.8% balanced) and valence is not
+readable at all (42.8% balanced, below chance).
+
+That negative result, the two measurement errors found while getting to it, and
+what would be needed to fix it: [`backend/EMOTION.md`](backend/EMOTION.md).
+
+---
+
 ## Real human EEG
 
 The headline capability runs on **recordings of actual people** viewing 200
