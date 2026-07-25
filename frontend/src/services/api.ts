@@ -5,7 +5,7 @@
  * errors — the UI shows those verbatim rather than a generic failure.
  */
 
-import type { SessionRecord, SessionSummary } from '@/types'
+import type { SessionRecord, SessionSummary, StimulusClip } from '@/types'
 
 export class ApiError extends Error {
   readonly status: number
@@ -71,22 +71,24 @@ export interface SystemInfo {
   stageOrder: string[]
   storedSessions: number
   activeSessions: number
+  decodersFitted: boolean
+  decoderTrainedOn: string[]
 }
 
-export interface SimulationProfile {
+export interface RecordingCondition {
   id: string
-  name: string
+  label: string
   description: string
-  tags: string[]
   artifactLevel: number
+  responseGain: number
 }
 
 export interface SessionCreated {
   sessionId: string
   sampleRate: number
   channels: string[]
-  duration: number
-  source: 'simulated' | 'uploaded' | 'device'
+  clip: StimulusClip
+  condition: string
   streamUrl: string
   windowSeconds: number
   hopSeconds: number
@@ -108,26 +110,15 @@ export const api = {
 
   montage: () => request<ElectrodeInfo[]>('/api/montage'),
 
-  profiles: () => request<SimulationProfile[]>('/api/sessions/profiles'),
+  clips: () => request<StimulusClip[]>('/api/sessions/clips'),
 
-  startSimulation: (body: {
-    profile: string
-    duration: number
-    speed?: number
-    title?: string
-  }) =>
-    request<SessionCreated>('/api/sessions/simulate', {
+  conditions: () => request<RecordingCondition[]>('/api/sessions/conditions'),
+
+  startSession: (body: { clip: string; condition: string; speed?: number }) =>
+    request<SessionCreated>('/api/sessions', {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-
-  uploadRecording: (file: File, options?: { speed?: number; title?: string }) => {
-    const form = new FormData()
-    form.append('file', file)
-    if (options?.speed != null) form.append('speed', String(options.speed))
-    if (options?.title) form.append('title', options.title)
-    return request<SessionCreated>('/api/sessions/upload', { method: 'POST', body: form })
-  },
 
   stopSession: (sessionId: string) =>
     request<{ stopped: string }>(`/api/sessions/${sessionId}`, { method: 'DELETE' }),

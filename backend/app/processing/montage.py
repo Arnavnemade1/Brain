@@ -1,7 +1,11 @@
-"""10–20 electrode montage: labels, normalised scalp coordinates, region groups.
+"""Electrode montage for visual reconstruction.
 
-Coordinates are unit-circle positions (nasion up, +x right) that the client
-projects directly onto the topography map.
+Weighted toward posterior coverage. The visual hierarchy sits occipital and
+occipito-temporal, and that is where essentially all recoverable information
+about visual input appears at the scalp. Frontal sites are retained mostly as
+an artifact reference — blinks and eye movement are largest there, which makes
+them useful for detecting contamination even though they carry little visual
+signal themselves.
 """
 
 from __future__ import annotations
@@ -11,22 +15,26 @@ from typing import Dict, List, Tuple
 CHANNELS: List[str] = [
     "Fp1",
     "Fp2",
-    "F7",
     "F3",
     "Fz",
     "F4",
-    "F8",
-    "T3",
+    "T7",
     "C3",
     "Cz",
     "C4",
-    "T4",
-    "T5",
+    "T8",
+    "P7",
     "P3",
     "Pz",
     "P4",
-    "T6",
+    "P8",
+    "PO7",
+    "PO3",
+    "POz",
+    "PO4",
+    "PO8",
     "O1",
+    "Oz",
     "O2",
 ]
 
@@ -34,23 +42,27 @@ CHANNELS: List[str] = [
 POSITIONS: Dict[str, Tuple[float, float]] = {
     "Fp1": (-0.28, 0.92),
     "Fp2": (0.28, 0.92),
-    "F7": (-0.76, 0.55),
     "F3": (-0.40, 0.58),
     "Fz": (0.00, 0.60),
     "F4": (0.40, 0.58),
-    "F8": (0.76, 0.55),
-    "T3": (-0.96, 0.00),
+    "T7": (-0.96, 0.00),
     "C3": (-0.48, 0.00),
     "Cz": (0.00, 0.00),
     "C4": (0.48, 0.00),
-    "T4": (0.96, 0.00),
-    "T5": (-0.76, -0.55),
-    "P3": (-0.40, -0.58),
-    "Pz": (0.00, -0.60),
-    "P4": (0.40, -0.58),
-    "T6": (0.76, -0.55),
-    "O1": (-0.28, -0.92),
-    "O2": (0.28, -0.92),
+    "T8": (0.96, 0.00),
+    "P7": (-0.78, -0.50),
+    "P3": (-0.42, -0.56),
+    "Pz": (0.00, -0.58),
+    "P4": (0.42, -0.56),
+    "P8": (0.78, -0.50),
+    "PO7": (-0.60, -0.74),
+    "PO3": (-0.30, -0.78),
+    "POz": (0.00, -0.80),
+    "PO4": (0.30, -0.78),
+    "PO8": (0.60, -0.74),
+    "O1": (-0.26, -0.94),
+    "Oz": (0.00, -0.97),
+    "O2": (0.26, -0.94),
 }
 
 INDEX: Dict[str, int] = {name: i for i, name in enumerate(CHANNELS)}
@@ -60,34 +72,51 @@ def indices(*labels: str) -> List[int]:
     return [INDEX[label] for label in labels if label in INDEX]
 
 
-#: Region groups used by the feature and inference stages.
-FRONTAL_LEFT = indices("Fp1", "F7", "F3")
-FRONTAL_RIGHT = indices("Fp2", "F8", "F4")
-FRONTAL = FRONTAL_LEFT + indices("Fz") + FRONTAL_RIGHT
-CENTRAL = indices("C3", "Cz", "C4", "T3", "T4")
-PARIETAL = indices("P3", "Pz", "P4", "T5", "T6")
-OCCIPITAL = indices("O1", "O2")
-POSTERIOR = PARIETAL + OCCIPITAL
-TEMPORAL = indices("T3", "T4", "T5", "T6")
+# --- Functional groups ------------------------------------------------------
 
-#: Lobe membership, for the region-activation readout in the console.
+#: Primary visual cortex projection. Luminance response is largest here.
+OCCIPITAL = indices("O1", "Oz", "O2")
+
+#: Extended occipital pole, including parieto-occipital sites.
+OCCIPITO_PARIETAL = indices("PO7", "PO3", "POz", "PO4", "PO8", "O1", "Oz", "O2")
+
+#: Lateral occipito-temporal — the motion-sensitive region (human MT/V5).
+MOTION_SENSITIVE = indices("PO7", "PO8", "P7", "P8")
+
+#: Parietal, where visual alpha desynchronisation is measured.
+PARIETAL = indices("P7", "P3", "Pz", "P4", "P8")
+
+#: Posterior as a whole.
+POSTERIOR = indices(
+    "P7", "P3", "Pz", "P4", "P8", "PO7", "PO3", "POz", "PO4", "PO8", "O1", "Oz", "O2"
+)
+
+#: Frontal — artifact reference, minimal visual content.
+FRONTAL = indices("Fp1", "Fp2", "F3", "Fz", "F4")
+CENTRAL = indices("C3", "Cz", "C4", "T7", "T8")
+
+#: Hemisphere splits. Contralateral organisation of the visual field means the
+#: left/right difference carries coarse horizontal layout.
+POSTERIOR_LEFT = indices("P7", "P3", "PO7", "PO3", "O1")
+POSTERIOR_RIGHT = indices("P8", "P4", "PO8", "PO4", "O2")
+
+#: Dorsal/ventral split. The upper visual field projects below the calcarine
+#: sulcus and vice versa, so this difference carries coarse vertical layout.
+POSTERIOR_DORSAL = indices("P7", "P3", "Pz", "P4", "P8")
+POSTERIOR_VENTRAL = indices("O1", "Oz", "O2")
+
 REGIONS: Dict[str, List[int]] = {
     "frontal": FRONTAL,
     "central": CENTRAL,
-    "temporal": TEMPORAL,
     "parietal": PARIETAL,
+    "occipito-parietal": indices("PO7", "PO3", "POz", "PO4", "PO8"),
     "occipital": OCCIPITAL,
 }
 
 
 def normalise_channel_names(names: List[str]) -> List[str]:
-    """Map arbitrary uploaded channel labels onto the canonical montage.
-
-    Uploaded recordings use inconsistent conventions (``EEG Fp1-REF``, ``FP1``,
-    ``T7`` for ``T3``). Anything unrecognised keeps its original label and is
-    simply excluded from region groups.
-    """
-    aliases = {"T7": "T3", "T8": "T4", "P7": "T5", "P8": "T6"}
+    """Map arbitrary uploaded channel labels onto the canonical montage."""
+    aliases = {"T3": "T7", "T4": "T8", "T5": "P7", "T6": "P8"}
     resolved: List[str] = []
 
     for raw in names:

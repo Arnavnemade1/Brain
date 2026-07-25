@@ -122,6 +122,24 @@ export class SessionSocket {
     }
   }
 
+  /**
+   * Mark the stream as finished normally.
+   *
+   * The server closes the socket after its final event. Without this, that
+   * ordinary close looks identical to a dropped connection: the client
+   * reconnects, the session no longer exists, and a run that completed
+   * successfully is reported to the user as a failure.
+   */
+  finish(): void {
+    this.closedByClient = true
+    if (this.reconnectTimer != null) {
+      window.clearTimeout(this.reconnectTimer)
+      this.reconnectTimer = null
+    }
+    this.queue = []
+    this.setStatus('closed')
+  }
+
   close(): void {
     this.closedByClient = true
     if (this.reconnectTimer != null) {

@@ -1,163 +1,102 @@
-"""Memory reconstruction models — mirrors ``frontend/src/types/memory.ts``."""
+"""Reconstruction and fidelity models — mirrors ``frontend/src/types/memory.ts``."""
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from pydantic import Field
 from typing_extensions import Literal
 
 from .base import CamelModel
-from .neural import CognitiveState, EmotionLabel
 
-Biome = Literal[
-    "childhood_home",
-    "school_hallway",
-    "beach_sunset",
-    "forest",
-    "city_streets",
-    "mountains",
-    "ancient_ruins",
-    "dreamscape",
-    "ocean",
-    "floating_islands",
-    "abstract_space",
-    "grand_architecture",
-]
+StimulusSource = Literal["synthetic", "uploaded"]
 
-BIOMES: List[str] = [
-    "childhood_home",
-    "school_hallway",
-    "beach_sunset",
-    "forest",
-    "city_streets",
-    "mountains",
-    "ancient_ruins",
-    "dreamscape",
-    "ocean",
-    "floating_islands",
-    "abstract_space",
-    "grand_architecture",
-]
-
-WeatherKind = Literal["clear", "overcast", "fog", "rain", "snow", "dust", "ashfall"]
-TimeOfDay = Literal["dawn", "morning", "noon", "afternoon", "golden", "dusk", "night"]
-ParticleKind = Literal["dust", "pollen", "embers", "snow", "rain", "motes", "none"]
-SoundLayerKind = Literal[
-    "wind", "waves", "rain", "birds", "traffic", "voices", "hum", "chimes", "heartbeat"
-]
-RegionArchetype = Literal["building", "terrain", "monument", "corridor", "grove", "water", "void"]
 ReconstructionStatus = Literal[
-    "idle", "acquiring", "processing", "reconstructing", "stabilised", "error"
+    "idle", "synchronising", "encoding", "reconstructing", "refining", "complete", "error"
 ]
-SessionSource = Literal["simulated", "uploaded", "device"]
 
 
-class SoundLayer(CamelModel):
-    kind: SoundLayerKind
-    gain: float = Field(ge=0.0, le=1.0)
-    confidence: float = Field(ge=0.0, le=1.0)
-
-
-class Palette(CamelModel):
-    key: str
-    fill: str
-    rim: str
-    fog: str
-    sky: str
-    ground: str
-    accent: str
-
-
-class LightingParams(CamelModel):
-    time_of_day: TimeOfDay
-    sun_elevation: float
-    sun_azimuth: float
-    intensity: float = Field(ge=0.0, le=2.0)
-    temperature: float
-    ambient: float = Field(ge=0.0, le=2.0)
-    volumetric: float = Field(ge=0.0, le=1.0)
-
-
-class AtmosphereParams(CamelModel):
-    weather: WeatherKind
-    fog_density: float = Field(ge=0.0, le=1.0)
-    particles: ParticleKind
-    particle_density: float = Field(ge=0.0, le=1.0)
-    wind: float = Field(ge=0.0, le=1.0)
-
-
-class RegionParams(CamelModel):
-    id: str
-    label: str
-    position: Tuple[float, float, float]
-    radius: float
-    confidence: float = Field(ge=0.0, le=1.0)
-    archetype: RegionArchetype
-    locked_by: Optional[str] = None
-
-
-class SceneParameters(CamelModel):
-    """The deterministic render descriptor handed to the 3D engine."""
-
-    seed: int
-    biome: Biome
-    palette: Palette
-    lighting: LightingParams
-    atmosphere: AtmosphereParams
-    spatial_scale: float = Field(ge=0.0, le=1.0)
-    population_density: float = Field(ge=0.0, le=1.0)
-    object_density: float = Field(ge=0.0, le=1.0)
-    emotional_intensity: float = Field(ge=0.0, le=1.0)
-    movement: float = Field(ge=0.0, le=1.0)
-    fragment_threshold: float = Field(ge=0.0, le=1.0)
-    distortion: float = Field(ge=0.0, le=1.0)
-    regions: List[RegionParams] = Field(default_factory=list)
-    soundscape: List[SoundLayer] = Field(default_factory=list)
-
-
-class MemoryFragment(CamelModel):
+class StimulusClip(CamelModel):
     id: str
     title: str
     description: str
-    position: Tuple[float, float, float]
-    emotion: EmotionLabel
+    duration_seconds: float
+    fps: float
+    #: Reconstruction grid. Deliberately coarse — set by what EEG supports.
+    grid_width: int
+    grid_height: int
+    source: StimulusSource
+    tags: List[str] = Field(default_factory=list)
+    scene_count: int
+
+
+class VisualFeatures(CamelModel):
+    """Ground-truth visual properties of one reference frame."""
+
+    t: float
+    luminance: float
+    contrast: float
+    motion: float
+    motion_direction: Optional[float] = None
+    edge_density: float
+    color: Tuple[float, float, float]
+    scene_cut: bool
+    scene_index: int
+
+
+class SceneEstimate(CamelModel):
+    """Scene-level properties decoded from the latent."""
+
+    t: float
+    luminance: float
+    contrast: float
+    motion: float
+    motion_direction: Optional[float] = None
+    color: Tuple[float, float, float]
+    scene_cut: bool
+    scene_index: int
     confidence: float = Field(ge=0.0, le=1.0)
-    sensory_details: List[str] = Field(default_factory=list)
-    related_ids: List[str] = Field(default_factory=list)
-    timeline_position: float = Field(ge=0.0, le=1.0)
-    neural_evidence: str
-    source_time: float
-    unlocks_region: Optional[str] = None
-    revealed: bool = False
 
 
-class MemoryNarrative(CamelModel):
+class ReconstructedFrame(CamelModel):
+    index: int
+    t: float
+    #: Base64 RGB bytes at the clip's grid resolution.
+    pixels: str
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+class FidelityMetrics(CamelModel):
+    ssim: float
+    psnr: float
+    luminance_correlation: float
+    color_correlation: float
+    motion_correlation: float
+    scene_cut_f1: float
+    layout_correlation: float
+    composite: float
+
+
+class FrameFidelity(CamelModel):
+    index: int
+    t: float
+    ssim: float
+    psnr: float
+    layout_correlation: float
+
+
+class ReconstructionReport(CamelModel):
     summary: str
     title: str
-    observations: List[str] = Field(default_factory=list)
-    uncertainties: List[str] = Field(default_factory=list)
-    generated_by_model: bool = False
-
-
-class ConfidenceSample(CamelModel):
-    t: float
-    confidence: float
-    coherence: float
-
-
-class EmotionSample(CamelModel):
-    t: float
-    emotion: EmotionLabel
-    intensity: float
+    findings: List[str] = Field(default_factory=list)
+    limitations: List[str] = Field(default_factory=list)
 
 
 class SessionVersion(CamelModel):
     version: int
     created_at: str
-    confidence: float
-    coherence: float
-    fragment_count: int
+    fidelity: float
+    ssim: float
     delta: str
 
 
@@ -166,31 +105,32 @@ class SessionSummary(CamelModel):
     title: str
     created_at: str
     duration_seconds: float
-    source: SessionSource
-    biome: Biome
-    primary_emotion: EmotionLabel
-    dominant_cognitive_state: CognitiveState
-    confidence: float
-    coherence: float
-    fragment_count: int
+    stimulus_id: str
+    stimulus_title: str
+    source: StimulusSource
+    fidelity: float
+    ssim: float
+    frame_count: int
     bookmarked: bool = False
     version: int = 1
 
 
 class SessionRecord(SessionSummary):
-    scene: SceneParameters
-    fragments: List[MemoryFragment] = Field(default_factory=list)
-    narrative: MemoryNarrative
-    confidence_trace: List[ConfidenceSample] = Field(default_factory=list)
-    emotion_trace: List[EmotionSample] = Field(default_factory=list)
+    clip: StimulusClip
+    metrics: FidelityMetrics
+    frame_fidelity: List[FrameFidelity] = Field(default_factory=list)
+    scenes: List[SceneEstimate] = Field(default_factory=list)
+    report: ReconstructionReport
+    latents: List["LatentPointRef"] = Field(default_factory=list)
     history: List[SessionVersion] = Field(default_factory=list)
 
 
-class ReconstructionState(CamelModel):
-    status: ReconstructionStatus = "idle"
-    progress: float = 0.0
-    confidence: float = 0.0
-    coherence: float = 0.0
-    region_confidence: Dict[str, float] = Field(default_factory=dict)
-    scene: Optional[SceneParameters] = None
-    fragments: List[MemoryFragment] = Field(default_factory=list)
+class LatentPointRef(CamelModel):
+    """Latent sample stored with a session record."""
+
+    t: float
+    vector: List[float]
+    confidence: float
+
+
+SessionRecord.model_rebuild()

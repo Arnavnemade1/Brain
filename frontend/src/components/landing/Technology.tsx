@@ -27,35 +27,35 @@ const PILLARS: Pillar[] = [
   },
   {
     icon: <Activity className="size-4" />,
-    title: 'Quality gating',
-    body: 'A poor recording produces a visibly poor reconstruction. That is the point.',
+    title: 'Synchronization',
+    body: 'A response attributed to the wrong frame corrupts every downstream number.',
     detail: [
-      'Channel deviation and noise-floor outlier detection',
-      'Composite score calibrated to its measured distribution',
-      'Confidence accumulates slowly, decays quickly',
-      'Coherence tracks spectral stability across windows',
+      'Marker alignment against playback and scene-transition triggers',
+      'Offset recovered to within 0.4-3.1 ms',
+      'Drift reported only when the marker geometry can support it',
+      'Residual scored over every marker, including rejected outliers',
     ],
   },
   {
     icon: <Brain className="size-4" />,
-    title: 'Inference',
-    body: 'Transparent weighted scorers over named neural measures — no black boxes.',
+    title: 'Encoding',
+    body: 'Seven visual-response measures, then a 16-dimensional memory latent.',
     detail: [
-      'Seven-way cognitive state, eight-way affect distribution',
-      'Valence from frontal alpha asymmetry, arousal from fast-band share',
-      'Coefficients fitted against ground truth, not hand-picked',
-      'Episodic attributes: familiarity, scale, temporal depth, vividness',
+      'Occipital luminance drive and posterior alpha suppression',
+      'Motion-sensitive beta/gamma over occipito-temporal sites',
+      'Evoked transients marking abrupt visual change',
+      'Field-balance asymmetry — the only spatial signal that reaches the scalp',
     ],
   },
   {
     icon: <Boxes className="size-4" />,
-    title: 'Reconstruction',
-    body: 'Procedural worlds built from a seeded, reproducible parameter set.',
+    title: 'Fidelity measurement',
+    body: 'The deliverable. Scored at native resolution against the reference.',
     detail: [
-      'Biomes matched on attribute pattern, then sampled by confidence',
-      'Region-level confidence drives geometry completeness',
-      'Emotion maps to palette, lighting, weather and soundscape',
-      'The same recording always rebuilds the same world',
+      'SSIM, PSNR, luminance, motion and colour correlation',
+      'Scene-boundary F1 matched on time, against every reference frame',
+      'Every metric shown against a trivial-baseline and a practical ceiling',
+      'Decoders fitted on held-out clips, never held-out frames',
     ],
   },
 ]
@@ -66,8 +66,8 @@ const STACK = [
     items: ['React 19', 'TypeScript', 'Vite', 'TailwindCSS', 'Framer Motion', 'Zustand'],
   },
   {
-    group: 'Rendering',
-    items: ['Three.js', 'React Three Fiber', 'Drei', 'Postprocessing'],
+    group: 'Reconstruction',
+    items: ['Ridge decoders', 'Latent trajectory', 'Temporal refinement', 'SSIM / PSNR'],
   },
   {
     group: 'Services',
@@ -112,8 +112,8 @@ export function Technology() {
     <Section
       id="technology"
       label="Technology"
-      title="Built so the science and the spectacle answer to the same numbers."
-      lede="The environment is downstream of the signal chain. Change what the EEG says and the world changes with it — there is no decorative layer sitting on top."
+      title="Built so every claim has a number behind it."
+      lede="The reconstruction is downstream of the signal chain, and the fidelity score is downstream of the reconstruction. There is no decorative layer anywhere in it."
     >
       <div className="grid gap-5 md:grid-cols-2">
         {PILLARS.map((pillar, index) => (

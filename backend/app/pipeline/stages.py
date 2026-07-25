@@ -1,8 +1,8 @@
 """Live pipeline stage tracking.
 
-Mirrors the twelve stages the client renders as a flow diagram. The runner
-updates this as work moves through, and the resulting states are pushed to the
-UI so the animation reflects real processing rather than a scripted loop.
+Mirrors the ten stages the client renders as a flow diagram. The runner
+updates this as work moves through, so the animation reflects real processing
+rather than a scripted loop.
 """
 
 from __future__ import annotations
@@ -11,20 +11,18 @@ from typing import Dict, List, Optional
 
 from ..models.pipeline import STAGE_ORDER, PipelineStageState
 
-#: Stage → the unit it counts in `throughput`, used to phrase messages.
+#: Stage → the unit it counts in `throughput`.
 _STAGE_UNITS: Dict[str, str] = {
-    "ingest": "samples",
-    "cleaning": "windows",
-    "denoise": "windows",
-    "features": "features",
-    "frequency": "spectra",
-    "temporal": "windows",
-    "memory_inference": "inferences",
-    "emotion": "inferences",
-    "context": "revisions",
-    "scene_params": "revisions",
-    "engine": "regions",
-    "environment": "frames",
+    "stimulus": "frames",
+    "acquisition": "samples",
+    "synchronization": "markers",
+    "artifact_removal": "windows",
+    "encoder": "features",
+    "latent": "points",
+    "scene": "estimates",
+    "frames": "frames",
+    "refinement": "frames",
+    "replay": "comparisons",
 }
 
 
@@ -38,7 +36,6 @@ class PipelineTracker:
         }
 
     def snapshot(self) -> List[PipelineStageState]:
-        """States in execution order, safe to serialise."""
         return [self._states[stage_id].model_copy() for stage_id in STAGE_ORDER]
 
     def get(self, stage_id: str) -> PipelineStageState:
@@ -64,8 +61,7 @@ class PipelineTracker:
         if progress is not None:
             state.progress = max(0.0, min(1.0, progress))
         if latency_ms is not None:
-            # Smoothed: raw per-window timings jitter enough to make the
-            # readout unreadable.
+            # Smoothed: raw per-window timings jitter enough to be unreadable.
             state.latency_ms = round(state.latency_ms * 0.7 + latency_ms * 0.3, 3)
         if throughput_delta is not None:
             state.throughput += throughput_delta

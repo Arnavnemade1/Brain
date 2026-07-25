@@ -1,25 +1,24 @@
-"""WebSocket event and command models — mirrors ``frontend/src/types/stream.ts``.
-
-Events are a discriminated union on ``type``. Each event serialises through
-``CamelModel.wire()`` before being pushed to the socket.
-"""
+"""WebSocket event and command models — mirrors ``frontend/src/types/stream.ts``."""
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from pydantic import Field
 from typing_extensions import Literal
 
 from .base import CamelModel
 from .memory import (
-    MemoryFragment,
-    MemoryNarrative,
+    FidelityMetrics,
+    FrameFidelity,
+    ReconstructedFrame,
+    ReconstructionReport,
     ReconstructionStatus,
-    SceneParameters,
-    SessionSource,
+    SceneEstimate,
+    StimulusClip,
+    VisualFeatures,
 )
-from .neural import NeuralFrame
+from .neural import LatentPoint, NeuralFrame
 from .pipeline import PipelineStageId, PipelineStageState
 
 
@@ -28,8 +27,16 @@ class SessionOpenedEvent(CamelModel):
     session_id: str
     sample_rate: int
     channels: List[str]
-    duration: Optional[float] = None
-    source: SessionSource
+    clip: StimulusClip
+
+
+class SyncEvent(CamelModel):
+    type: Literal["sync"] = "sync"
+    offset_seconds: float
+    drift_ppm: float
+    residual_ms: float
+    markers_matched: int
+    markers_expected: int
 
 
 class FrameEvent(CamelModel):
@@ -42,34 +49,36 @@ class PipelineEvent(CamelModel):
     stages: List[PipelineStageState]
 
 
-class SceneEvent(CamelModel):
-    type: Literal["scene"] = "scene"
-    scene: SceneParameters
+class LatentEvent(CamelModel):
+    type: Literal["latent"] = "latent"
+    point: LatentPoint
 
 
-class SceneUpdateEvent(CamelModel):
-    type: Literal["scene.update"] = "scene.update"
-    region_confidence: Dict[str, float] = Field(default_factory=dict)
-    resolved_regions: List[str] = Field(default_factory=list)
-    patch: Dict[str, object] = Field(default_factory=dict)
+class ReconstructionFrameEvent(CamelModel):
+    type: Literal["reconstruction.frame"] = "reconstruction.frame"
+    frame: ReconstructedFrame
+    #: Reference frame at the same grid resolution, base64 RGB.
+    reference: str
+    scene: SceneEstimate
+    truth: VisualFeatures
+    fidelity: FrameFidelity
 
 
-class FragmentEvent(CamelModel):
-    type: Literal["fragment"] = "fragment"
-    fragment: MemoryFragment
-
-
-class ReconstructionEvent(CamelModel):
-    type: Literal["reconstruction"] = "reconstruction"
+class ProgressEvent(CamelModel):
+    type: Literal["progress"] = "progress"
     status: ReconstructionStatus
     progress: float
-    confidence: float
-    coherence: float
+    fidelity: float
 
 
-class NarrativeEvent(CamelModel):
-    type: Literal["narrative"] = "narrative"
-    narrative: MemoryNarrative
+class MetricsEvent(CamelModel):
+    type: Literal["metrics"] = "metrics"
+    metrics: FidelityMetrics
+
+
+class ReportEvent(CamelModel):
+    type: Literal["report"] = "report"
+    report: ReconstructionReport
 
 
 class SessionClosedEvent(CamelModel):
@@ -89,7 +98,6 @@ class StreamErrorEvent(CamelModel):
 class StreamCommand(CamelModel):
     """Inbound control message. Unknown fields are ignored by design."""
 
-    type: Literal["start", "pause", "resume", "stop", "seek", "speed", "focus"]
+    type: Literal["start", "pause", "resume", "stop", "seek", "speed"]
     speed: Optional[float] = None
     t: Optional[float] = None
-    region_id: Optional[str] = None

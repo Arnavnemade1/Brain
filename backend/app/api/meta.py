@@ -11,6 +11,7 @@ from ..models.base import CamelModel
 from ..models.pipeline import STAGE_ORDER
 from ..processing.bands import BAND_RANGES
 from ..processing.montage import CHANNELS, POSITIONS, REGIONS
+from ..reconstruction.decoders import get_decoders
 from ..services.store import get_store
 from ..websocket.manager import get_manager
 
@@ -34,6 +35,9 @@ class SystemInfo(CamelModel):
     stage_order: List[str]
     stored_sessions: int
     active_sessions: int
+    #: Whether fitted decoder weights are loaded.
+    decoders_fitted: bool
+    decoder_trained_on: List[str]
 
 
 @router.get("/health")
@@ -60,6 +64,8 @@ async def system() -> SystemInfo:
         stage_order=list(STAGE_ORDER),
         stored_sessions=get_store().count,
         active_sessions=get_manager().count,
+        decoders_fitted=get_decoders().fitted,
+        decoder_trained_on=list(get_decoders().trained_on),
     )
 
 

@@ -1,110 +1,143 @@
-# Pipeline calibration
+# Reconstruction fidelity
 
-Measured round-trip accuracy of the analysis pipeline against the simulator's
-scripted ground truth. Nothing is passed between the generator and the
-analyser — these numbers reflect genuine recovery from the waveform alone.
+Measured recovery of a watched video from EEG alone. Nothing is passed between
+the simulator and the reconstruction engine: the encoder sees only the
+synthesised waveform, and every number below is scored against the reference
+clip the subject "watched".
 
-Reproduce with:
-
-```bash
-backend/.venv/bin/python -m tools.calibrate
-```
-
-Refit the affect coefficients with:
+Reproduce:
 
 ```bash
-backend/.venv/bin/python -m tools.fit_affect
+backend/.venv/bin/python -m tools.train_decoders   # fit decoders
+backend/.venv/bin/python -m tools.evaluate         # score reconstructions
 ```
 
-## Current results
+## Headline result
 
-2464 windows · 7 profiles × 4 seeds · 90 s each · 256 Hz · 2 s windows / 50% overlap
+40 runs · 8 clips × 4 recording conditions · 32×18 reconstruction grid
 
-| Measure | Result | Baseline |
+| | Reconstruction | Mean-frame baseline |
 | --- | --- | --- |
-| Band power MAE | 0.070 | 0 = perfect |
-| Cognitive state accuracy | 34.0% | 14.3% (7-way chance) |
-| Emotion accuracy (mean over classes) | ~36% | 12.5% (8-way chance) |
-| Valence correlation | +0.547 | 0 |
-| Arousal range | 0.20 – 1.00, mean 0.56 | target mean 0.55 |
+| **Composite fidelity** | **0.489** | 0.187 |
+| SSIM | 0.439 | 0.508 |
+| Luminance tracking | r = +0.32 | 0 |
+| Motion tracking | r = +0.57 | 0 |
+| Scene boundary F1 | 0.69 | 0 |
+| Spatial layout | r = +0.44 | — |
 
-### Per-emotion recovery
+On clips **never seen during decoder fitting**, the reconstruction beats the
+baseline composite in **10 of 12 runs, by 2.3×**.
 
-| Scripted | Exact | Most common confusion |
+### Fidelity by recording quality
+
+| Condition | Composite |
+| --- | --- |
+| Research lab | 0.523 |
+| Clinical-grade | 0.497 |
+| Consumer headset | 0.482 |
+| Degraded | 0.404 |
+
+Fidelity degrades gracefully rather than collapsing, and the ordering is
+sensible — but note the spread is narrower than the artifact levels suggest,
+because baselining absorbs a good deal of the difference.
+
+## The honest headline: SSIM loses to a constant image
+
+The reconstruction scores **below** the mean-frame baseline on SSIM (0.439 vs
+0.508), and beats it on that metric in only 5 of 12 held-out runs.
+
+This is not a bug, and it is the single most important thing to understand
+about the system. A constant average frame is spatially smooth and structurally
+self-consistent, which is exactly what SSIM rewards. Scalp EEG carries almost
+no spatial information — roughly left/right and upper/lower field balance —
+so a reconstruction that honestly renders *only* what it recovered cannot beat
+a smooth constant on a spatial metric.
+
+What the reconstruction does recover is **temporal**: when the scene got
+brighter, when it moved, and where it cut. The baseline scores exactly zero on
+all three by construction. That is where the 2.3× composite margin comes from.
+
+Anyone reporting an impressive-looking SSIM for EEG video reconstruction should
+be asked what a constant frame scores on the same material.
+
+## What is and is not recoverable
+
+Held-out correlation between decoded and true values, on unseen clips:
+
+| Property | r | Verdict |
 | --- | --- | --- |
-| nostalgia | 58.6% | calm 15% |
-| curiosity | 51.5% | nostalgia 21% |
-| melancholy | 48.1% | nostalgia 24% |
-| wonder | 48.3% | nostalgia 23% |
-| stress | 43.0% | curiosity 36% |
-| calm | 24.5% | nostalgia 43% |
-| joy | 11.8% | curiosity 39% |
-| fear | 6.3% | stress 59% |
+| Motion energy | +0.62 | tracked |
+| Luminance | +0.54 | tracked |
+| Colour | +0.54 | tracked, but see below |
+| Contrast | +0.39 | tracked |
+| Scene boundaries | F1 0.78 | tracked |
+| Spatial layout | R² −0.18 | **not recovered** |
 
-## Interpretation
+- **Scene boundaries are the most reliable recovery.** An abrupt visual change
+  produces a large time-locked evoked response that survives heavy noise.
+- **Spatial layout is not recovered.** This is the physical ceiling, not a
+  decoder deficiency. The frame reconstruction scales its spatial variation by
+  the *measured* layout reliability, so where layout is unrecoverable the
+  output correctly collapses toward a uniform field at the decoded brightness.
+- **Colour's r = +0.54 is misleading.** In this clip library colour correlates
+  with luminance (scenes are largely neutral), so the colour decoder is
+  substantially riding the luminance signal. Chromatic information is weakly
+  represented at the scalp; treat this number with suspicion.
+- **Absolute brightness is uncertain.** The encoder measures response relative
+  to a pre-stimulus baseline, so it tracks how brightness *changed* far better
+  than what it was. Held-out R² for luminance is negative (−0.08) while its
+  correlation is +0.54 — the shape is right, the level is not.
 
-Accuracy is 2.4–2.9× chance across both classification tasks. The residual
-confusions are between genuinely adjacent affective states — calm/nostalgia,
-stress/fear, joy/curiosity — which is the expected failure mode rather than a
-sign of a broken model. Real EEG affect decoding performs comparably.
+## Synchronization
 
-This matters for the product rather than being an apology for it: MindScape's
-premise is that reconstruction quality is bounded by neural evidence. Moderate
-classifier confidence is what drives fragmented geometry and low-confidence
-regions in the rendered environment, and those are the honest output.
+Offset is recovered to within 0.4–3.1 ms. **Clock drift is not estimable** at
+these clip lengths: with three markers over 20 s and ~5 ms trigger jitter, the
+standard error on the slope is around ±230 ppm against a true drift of tens of
+ppm. The system detects this and fits offset only rather than reporting a
+number dominated by its own uncertainty.
+
+Worst-case misalignment across a whole clip is then 0.7–5.8 ms — negligible
+against a 2 s analysis window, so the simpler model is provably sufficient here.
 
 ## Calibration decisions worth knowing
 
 Several of these were bugs found by measurement, not design choices:
 
-- **Features and band powers are scored in z-space**, against measured
-  distributions in `pipeline/normalisation.py`. Earlier versions scored
-  against hand-written raw targets, several of which fell outside the
-  feature's actual range and contributed nothing. Relative band power does
-  not average 0.2 per band — gamma averages 0.074 — so scoring against a
-  nominal even spectrum handed a permanent bonus to any state weighting
-  gamma negatively.
+- **Scene-boundary threshold is swept on the metric the system reports.** An
+  earlier version swept a window-level F1 while reporting a time-matched one;
+  the "optimal" threshold produced 11 detections for 3 real cuts. Fixing the
+  mismatch moved F1 from 0.54 to 0.69.
 
-- **Affect coefficients are fitted**, not chosen (`tools/fit_affect.py`).
+- **Boundary F1 is scored against every reference frame.** Scoring against
+  ground truth sampled at reconstruction times drops most real cuts — they are
+  instantaneous events on a 10 fps timeline while reconstructions arrive about
+  once a second — and scored 0.29 against a truth series that had itself lost
+  the answer.
 
-- **Valence uses frontal alpha asymmetry alone.** Regression finds raw alpha
-  power predicts scripted valence slightly better, but only because relaxed
-  alpha-rich phases happen to carry positive valence in the profile library.
-  Fitting that would encode a quirk of the test data, not a real relationship.
+- **Ridge penalty is selected on held-out correlation, not R².** Selecting on
+  R² rewards matching the absolute level, which drives the penalty up until
+  predictions collapse toward the training mean: lower error, no tracking.
 
-- **Arousal variance is restored** by 1/r after fitting. A least-squares fit
-  shrinks toward the mean, and a readout compressed into the middle third can
-  never reach the `calm` or `fear` anchors.
+- **Held-out split is by clip, not by frame.** Frames within a clip are heavily
+  autocorrelated, so a random frame split leaks the answer.
 
-- **Frontal band power uses a median across channels.** Blink artifacts land
-  on the same frontal electrodes the asymmetry measure depends on; one
-  contaminated lead dominates a three-channel mean. This change alone moved
-  valence recovery from r=+0.297 to r=+0.547.
+- **Frame reconstruction asserts spatial structure only in proportion to
+  measured layout reliability.** Asserting full decoded contrast regardless
+  made reconstructions score *below* a flat mean frame: confidently wrong
+  detail is worse than honest smoothness.
 
 - **Signal quality grade thresholds are calibrated** to the composite score's
-  actual distribution (~0.75–0.99), not an even split of 0–1, which would
-  grade every session "excellent".
+  actual distribution (~0.75–0.99), not an even split of 0–1.
 
-- **Memory attributes are logistic-squashed sums of z-scores.** Written as
-  raw band values with additive constants, every attribute saturated above
-  0.8 (familiarity spanned only 0.67–0.98) and the biome selector collapsed
-  onto whichever setting expected the highest values. Attribute spread across
-  profiles roughly doubled after the change.
+## Limitations of this evaluation
 
-- **Spatial scale deliberately excludes theta**, which is the familiarity
-  marker. Sharing the term made the two attributes contradict each other for
-  interior memories — theta-rich *and* small-scale — so no interior setting
-  could ever be selected.
-
-- **Biomes are matched by attribute *pattern*, then sampled.** Inferred
-  attributes cluster near the middle of the range while biome profiles span
-  the full axis, so nearest-neighbour scoring in raw units only ever returned
-  mid-range settings. Cosine similarity on standardised vectors fixes the
-  scale mismatch; seeded softmax sampling over the top candidates then
-  reflects that leading scores are usually within a few percent of each other.
-  Argmax presented that ambiguity as a determination.
-
-  Current spread: 8 distinct biomes over 42 runs (7 profiles × 6 seeds), with
-  per-profile variation staying inside semantically coherent groups — coastal
-  recall yields ocean/beach/forest, ruins wander yields ruins/monumental/
-  mountains. Selection remains deterministic for a given recording and seed.
+- The EEG is **synthetic**, generated by a forward model of visual response
+  (occipital luminance drive, alpha suppression, motion-sensitive activity,
+  evoked transients, field-balance asymmetry). Real EEG carries additional
+  noise, individual variability and non-stationarity this does not capture.
+  These numbers are an **upper bound**.
+- The clip library is procedural and small. Real video has far richer spatial
+  statistics, which would likely lower layout and colour recovery further.
+- Decoders are linear by choice. A nonlinear model might extract more, but with
+  a 16-dimensional latent over a handful of recoverable quantities, it would
+  mostly fit noise — and would make every result harder to attribute.

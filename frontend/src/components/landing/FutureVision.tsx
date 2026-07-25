@@ -14,35 +14,35 @@ interface Horizon {
 const HORIZONS: Horizon[] = [
   {
     phase: 'Near',
-    title: 'Personal neural profiles',
-    body: 'Models that learn one person rather than an averaged population.',
+    title: 'Subject-specific decoders',
+    body: 'Models fitted to one person rather than an averaged population.',
     items: [
-      'Per-user baselines replacing population norms',
-      'Adaptive reconstruction weighted by prior sessions',
-      'Long-term memory graphs across a whole archive',
-      'Natural-language search over reconstructed memories',
+      'Per-subject calibration sessions and baselines',
+      'Nonlinear decoders once the data supports them',
+      'Higher electrode counts for real spatial recovery',
+      'Recorded rather than simulated EEG',
     ],
   },
   {
     phase: 'Mid',
-    title: 'Memory as a connected space',
-    body: 'Individual reconstructions stop being isolated and start relating to each other.',
+    title: 'Semantic reconstruction',
+    body: 'Recovering what was in the scene, not only how it behaved over time.',
     items: [
-      'Cross-memory relationship mapping',
-      'Reconstruction refinement from accumulated evidence',
-      'Emotion-aware detail synthesis',
-      'Collaborative exploration of a shared reconstruction',
+      'Object and category decoding from evoked components',
+      'Generative priors constrained by measured fidelity',
+      'Cross-session accumulation over repeated viewings',
+      'Reconstruction from recalled rather than viewed material',
     ],
   },
   {
     phase: 'Far',
-    title: 'Direct neural interfaces',
-    body: 'The acquisition layer moves from recordings to live, high-density signal.',
+    title: 'Higher-bandwidth acquisition',
+    body: 'The spatial ceiling lifts only when the measurement does.',
     items: [
-      'Real-time consumer and research EEG hardware',
-      'Immersive VR exploration of reconstructions',
-      'Brain–computer interface integration',
-      'AI-assisted recovery of degraded memory traces',
+      'fMRI and MEG for genuine spatial resolution',
+      'Intracranial recording where clinically available',
+      'Real-time decoding from live acquisition',
+      'Brain-computer interface integration',
     ],
   },
 ]
@@ -88,8 +88,8 @@ export function FutureVision() {
     <Section
       id="future"
       label="Future vision"
-      title="What this becomes when the signal gets better."
-      lede="The architecture assumes the acquisition layer will improve. Everything above it — inference, context, reconstruction — is built to take a better signal without being rewritten."
+      title="What raises the ceiling."
+      lede="Fidelity here is bounded by what scalp EEG carries, not by the decoder. Everything above the acquisition layer is built to take a richer signal without being rewritten."
     >
       <div className="grid gap-5 lg:grid-cols-3">
         {HORIZONS.map((horizon, index) => (

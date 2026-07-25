@@ -5,19 +5,7 @@
  * reading is the same colour in a chart, a badge and the reconstruction sky.
  */
 
-import type { CognitiveState, EmotionLabel, FrequencyBand } from '@/types'
-import type { SignalQualityGrade } from '@/types/neural'
-
-export const EMOTION_COLOR: Record<EmotionLabel, string> = {
-  calm: '#5fd4c4',
-  nostalgia: '#e8b464',
-  wonder: '#a48bf2',
-  stress: '#e0736b',
-  curiosity: '#52c4ea',
-  melancholy: '#6b83c9',
-  joy: '#f2c14e',
-  fear: '#b26bc9',
-}
+import type { FrequencyBand, SignalQualityGrade } from '@/types'
 
 export const BAND_COLOR: Record<FrequencyBand, string> = {
   delta: '#6247c7',
@@ -25,16 +13,6 @@ export const BAND_COLOR: Record<FrequencyBand, string> = {
   alpha: '#38c1ef',
   beta: '#5fd4c4',
   gamma: '#e8b464',
-}
-
-export const COGNITIVE_COLOR: Record<CognitiveState, string> = {
-  focused: '#38c1ef',
-  relaxed: '#5fd4c4',
-  drowsy: '#6b83c9',
-  dreaming: '#a48bf2',
-  recalling: '#e8b464',
-  alert: '#f2c14e',
-  meditative: '#7f66e8',
 }
 
 export const QUALITY_COLOR: Record<SignalQualityGrade, string> = {

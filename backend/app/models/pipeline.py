@@ -10,36 +10,32 @@ from typing_extensions import Literal
 from .base import CamelModel
 
 PipelineStageId = Literal[
-    "ingest",
-    "cleaning",
-    "denoise",
-    "features",
-    "frequency",
-    "temporal",
-    "memory_inference",
-    "emotion",
-    "context",
-    "scene_params",
-    "engine",
-    "environment",
+    "stimulus",
+    "acquisition",
+    "synchronization",
+    "artifact_removal",
+    "encoder",
+    "latent",
+    "scene",
+    "frames",
+    "refinement",
+    "replay",
 ]
 
 StageStatus = Literal["idle", "active", "complete", "degraded", "error"]
 
-#: Execution order. The runner walks this list for every analysis window.
+#: Execution order of the Memory Reconstruction Engine.
 STAGE_ORDER: List[str] = [
-    "ingest",
-    "cleaning",
-    "denoise",
-    "features",
-    "frequency",
-    "temporal",
-    "memory_inference",
-    "emotion",
-    "context",
-    "scene_params",
-    "engine",
-    "environment",
+    "stimulus",
+    "acquisition",
+    "synchronization",
+    "artifact_removal",
+    "encoder",
+    "latent",
+    "scene",
+    "frames",
+    "refinement",
+    "replay",
 ]
 
 

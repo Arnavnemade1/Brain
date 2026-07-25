@@ -1,17 +1,19 @@
 /**
- * WebSocket protocol between the session console and the backend.
- *
- * The backend pushes a discriminated union of events over `/ws/session/{id}`;
- * the client sends a small set of control commands back on the same socket.
+ * WebSocket protocol between the reconstruction console and the backend.
  */
 
 import type { NeuralFrame } from './neural'
 import type { PipelineStageId, PipelineStageState } from './pipeline'
 import type {
-  MemoryFragment,
-  MemoryNarrative,
+  FidelityMetrics,
+  FrameFidelity,
+  LatentPoint,
+  ReconstructedFrame,
+  ReconstructionReport,
   ReconstructionStatus,
-  SceneParameters,
+  SceneEstimate,
+  StimulusClip,
+  VisualFeatures,
 } from './memory'
 
 export interface SessionOpenedEvent {
@@ -19,9 +21,20 @@ export interface SessionOpenedEvent {
   sessionId: string
   sampleRate: number
   channels: string[]
-  /** Total session length in seconds; null for open-ended live streams. */
-  duration: number | null
-  source: 'simulated' | 'uploaded' | 'device'
+  clip: StimulusClip
+}
+
+/** Synchronization result, emitted once before reconstruction begins. */
+export interface SyncEvent {
+  type: 'sync'
+  /** Offset in seconds between the recording and playback clocks. */
+  offsetSeconds: number
+  /** Fitted clock drift in parts per million. */
+  driftPpm: number
+  /** Residual alignment error in milliseconds after correction. */
+  residualMs: number
+  markersMatched: number
+  markersExpected: number
 }
 
 export interface FrameEvent {
@@ -34,38 +47,38 @@ export interface PipelineEvent {
   stages: PipelineStageState[]
 }
 
-/** Emitted once the context model first commits to a scene. */
-export interface SceneEvent {
-  type: 'scene'
-  scene: SceneParameters
+export interface LatentEvent {
+  type: 'latent'
+  point: LatentPoint
 }
 
-/** Incremental refinement of an existing scene as evidence accumulates. */
-export interface SceneUpdateEvent {
-  type: 'scene.update'
-  regionConfidence: Record<string, number>
-  /** Regions promoted from fragmented to resolved this tick. */
-  resolvedRegions: string[]
-  /** Parameter drift as the interpretation sharpens. */
-  patch: Partial<SceneParameters>
+/** A reconstructed frame, paired with the reference it will be scored against. */
+export interface ReconstructionFrameEvent {
+  type: 'reconstruction.frame'
+  frame: ReconstructedFrame
+  /** Reference frame at the same grid resolution, base64 RGB. */
+  reference: string
+  scene: SceneEstimate
+  truth: VisualFeatures
+  fidelity: FrameFidelity
 }
 
-export interface FragmentEvent {
-  type: 'fragment'
-  fragment: MemoryFragment
-}
-
-export interface ReconstructionEvent {
-  type: 'reconstruction'
+export interface ProgressEvent {
+  type: 'progress'
   status: ReconstructionStatus
   progress: number
-  confidence: number
-  coherence: number
+  /** Running composite fidelity so far. */
+  fidelity: number
 }
 
-export interface NarrativeEvent {
-  type: 'narrative'
-  narrative: MemoryNarrative
+export interface MetricsEvent {
+  type: 'metrics'
+  metrics: FidelityMetrics
+}
+
+export interface ReportEvent {
+  type: 'report'
+  report: ReconstructionReport
 }
 
 export interface SessionClosedEvent {
@@ -84,13 +97,14 @@ export interface StreamErrorEvent {
 
 export type StreamEvent =
   | SessionOpenedEvent
+  | SyncEvent
   | FrameEvent
   | PipelineEvent
-  | SceneEvent
-  | SceneUpdateEvent
-  | FragmentEvent
-  | ReconstructionEvent
-  | NarrativeEvent
+  | LatentEvent
+  | ReconstructionFrameEvent
+  | ProgressEvent
+  | MetricsEvent
+  | ReportEvent
   | SessionClosedEvent
   | StreamErrorEvent
 
@@ -102,7 +116,6 @@ export type StreamEventType = StreamEvent['type']
 
 export interface StartCommand {
   type: 'start'
-  /** Playback rate multiplier, 0.25–4. */
   speed: number
 }
 
@@ -120,19 +133,12 @@ export interface StopCommand {
 
 export interface SeekCommand {
   type: 'seek'
-  /** Target time in seconds from session start. */
   t: number
 }
 
 export interface SpeedCommand {
   type: 'speed'
   speed: number
-}
-
-/** Ask the engine to spend extra evidence resolving one region. */
-export interface FocusCommand {
-  type: 'focus'
-  regionId: string
 }
 
 export type StreamCommand =
@@ -142,7 +148,6 @@ export type StreamCommand =
   | StopCommand
   | SeekCommand
   | SpeedCommand
-  | FocusCommand
 
 export type ConnectionStatus =
   | 'idle'

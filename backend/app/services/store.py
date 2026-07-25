@@ -70,9 +70,8 @@ class SessionStore:
                     SessionVersion(
                         version=existing.version,
                         created_at=existing.created_at,
-                        confidence=existing.confidence,
-                        coherence=existing.coherence,
-                        fragment_count=len(existing.fragments),
+                        fidelity=existing.fidelity,
+                        ssim=existing.ssim,
                         delta=_describe_delta(existing, record),
                     ),
                     *existing.history,
@@ -154,13 +153,7 @@ class SessionStore:
 
 def _matches(summary: SessionSummary, needle: str) -> bool:
     haystack = " ".join(
-        [
-            summary.title,
-            summary.biome.replace("_", " "),
-            summary.primary_emotion,
-            summary.dominant_cognitive_state,
-            summary.source,
-        ]
+        [summary.title, summary.stimulus_title, summary.stimulus_id, summary.source]
     ).lower()
     return needle in haystack
 
@@ -169,36 +162,21 @@ def _describe_delta(previous: SessionRecord, current: SessionRecord) -> str:
     """One line summarising how a re-reconstruction changed."""
     parts: List[str] = []
 
-    confidence_change = current.confidence - previous.confidence
-    if abs(confidence_change) >= 0.02:
-        direction = "rose" if confidence_change > 0 else "fell"
-        parts.append(f"confidence {direction} {abs(confidence_change) * 100:.0f}%")
+    fidelity_change = current.fidelity - previous.fidelity
+    if abs(fidelity_change) >= 0.005:
+        direction = "rose" if fidelity_change > 0 else "fell"
+        parts.append(f"fidelity {direction} {abs(fidelity_change) * 100:.1f} points")
 
-    fragment_change = len(current.fragments) - len(previous.fragments)
-    if fragment_change:
-        direction = "recovered" if fragment_change > 0 else "lost"
-        parts.append(f"{abs(fragment_change)} fragment(s) {direction}")
+    ssim_change = current.ssim - previous.ssim
+    if abs(ssim_change) >= 0.005:
+        parts.append(f"SSIM {ssim_change:+.3f}")
 
-    if current.biome != previous.biome:
-        parts.append(
-            f"setting reinterpreted as {current.biome.replace('_', ' ')}"
-        )
+    if current.stimulus_id != previous.stimulus_id:
+        parts.append(f"stimulus changed to {current.stimulus_title}")
 
-    if current.primary_emotion != previous.primary_emotion:
-        parts.append(f"affect shifted to {current.primary_emotion}")
-
-    resolved = sum(
-        1
-        for region in current.scene.regions
-        if region.confidence >= current.scene.fragment_threshold
-    )
-    previously_resolved = sum(
-        1
-        for region in previous.scene.regions
-        if region.confidence >= previous.scene.fragment_threshold
-    )
-    if resolved != previously_resolved:
-        parts.append(f"{resolved - previously_resolved:+d} regions resolved")
+    cut_change = current.metrics.scene_cut_f1 - previous.metrics.scene_cut_f1
+    if abs(cut_change) >= 0.02:
+        parts.append(f"scene-boundary F1 {cut_change:+.2f}")
 
     return "; ".join(parts) if parts else "no material change"
 

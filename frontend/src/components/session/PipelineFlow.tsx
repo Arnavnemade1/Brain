@@ -11,10 +11,10 @@ interface PipelineFlowProps {
 }
 
 const BAND_TONE: Record<PipelineStageMeta['band'], string> = {
+  stimulus: 'var(--color-memory-300)',
   acquisition: 'var(--color-neural-300)',
-  analysis: 'var(--color-emotion-calm)',
-  inference: 'var(--color-cortex-400)',
-  synthesis: 'var(--color-memory-300)',
+  encoding: 'var(--color-cortex-400)',
+  reconstruction: 'var(--color-emotion-calm)',
 }
 
 const STATUS_LABEL: Record<StageStatus, string> = {

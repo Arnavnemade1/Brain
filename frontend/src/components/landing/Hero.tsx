@@ -8,7 +8,7 @@ import { NeuralField } from '@/components/viz/NeuralField'
 import { useReducedMotion } from '@/hooks/useMotionPreference'
 import { Button } from '@/ui'
 
-const HEADLINE = ['Walk through', 'your own', 'memories.']
+const HEADLINE = ['Reconstruct', 'what they', 'saw.']
 
 export function Hero() {
   const ref = useRef<HTMLElement>(null)
@@ -55,7 +55,7 @@ export function Hero() {
           transition={{ duration: 0.9, ease: EASE_GLIDE, delay: 0.15 }}
           className="text-label mb-8"
         >
-          Memory Reconstruction Platform
+          Memory Reconstruction Engine
         </motion.p>
 
         <h1 className="text-[clamp(2.6rem,8vw,5.6rem)] leading-[0.98] font-normal">
@@ -88,8 +88,9 @@ export function Hero() {
           transition={{ duration: 1, ease: EASE_GLIDE, delay: 0.8 }}
           className="mx-auto mt-9 max-w-xl text-[1.05rem] leading-relaxed text-ink-muted"
         >
-          MindScape interprets EEG activity and reconstructs the experience behind it as
-          an environment you can move through. Not a chart of your brainwaves — a place.
+          MindScape recovers a watched video from the EEG recorded while it played,
+          then scores the result against the original frame by frame. The objective is
+          measurable reconstruction fidelity, not illustration.
         </motion.p>
 
         <motion.div
@@ -100,7 +101,7 @@ export function Hero() {
         >
           <Link to="/session">
             <Button variant="primary" size="lg" icon={<ArrowRight className="size-4" />}>
-              Begin a neural session
+              Begin a reconstruction
             </Button>
           </Link>
           <a href="#how-it-works">
@@ -116,9 +117,9 @@ export function Hero() {
           transition={{ duration: 1, delay: 1.3 }}
           className="mt-10 text-[0.72rem] leading-relaxed text-ink-faint"
         >
-          Reconstructions are inferences from neural signal, not recovered recordings.
+          Every reconstruction is compared against the reference the subject watched.
           <br className="hidden sm:block" />
-          Where the evidence runs out, the world stays unfinished.
+          Where the signal carries nothing, the output shows nothing.
         </motion.p>
       </motion.div>
 

@@ -33,22 +33,22 @@ export function LaunchCta() {
         <div className="relative">
           <p className="text-label mb-6">Launch experience</p>
           <h2 className="mx-auto max-w-2xl text-[clamp(1.9rem,4.6vw,3.1rem)] leading-[1.06]">
-            Start a session and watch a memory assemble itself.
+            Run a reconstruction and see what survives.
           </h2>
           <p className="mx-auto mt-6 max-w-lg text-[1.02rem] leading-relaxed text-ink-muted">
-            Run a simulated neural stream, or upload an EEG recording of your own. The
-            reconstruction builds in real time as the signal arrives.
+            Pick a reference clip and a recording quality. The reconstruction decodes in
+            real time and is scored against the original, frame by frame.
           </p>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <Link to="/session">
               <Button variant="primary" size="lg" icon={<Waves className="size-4" />}>
-                Begin a neural session
+                Begin a reconstruction
               </Button>
             </Link>
-            <Link to="/session?mode=upload">
+            <Link to="/library">
               <Button variant="secondary" size="lg" icon={<Upload className="size-4" />}>
-                Upload a recording
+                Past reconstructions
               </Button>
             </Link>
           </div>
@@ -57,7 +57,7 @@ export function LaunchCta() {
             to="/library"
             className="mt-8 inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink"
           >
-            Browse previously reconstructed memories
+            Read the fidelity methodology
             <ArrowRight className="size-3.5" />
           </Link>
         </div>
@@ -66,8 +66,9 @@ export function LaunchCta() {
       <footer className="mt-14 flex flex-col items-center gap-3 text-center">
         <div className="rule-fade w-full max-w-xl" />
         <p className="max-w-lg text-[0.72rem] leading-relaxed text-ink-faint">
-          MindScape is a research prototype. Reconstructions are the model's best fit to
-          neural evidence and should not be treated as records of real events.
+          MindScape is a research prototype running on simulated EEG. Reported fidelity
+          is an upper bound; real recordings carry noise and variability the forward
+          model does not capture.
         </p>
       </footer>
     </section>

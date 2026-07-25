@@ -9,17 +9,17 @@ import type { PipelineStageMeta } from '@/types'
 import { Section } from './Section'
 
 const BAND_TONE: Record<PipelineStageMeta['band'], string> = {
+  stimulus: 'var(--color-memory-300)',
   acquisition: 'var(--color-neural-300)',
-  analysis: 'var(--color-emotion-calm)',
-  inference: 'var(--color-cortex-400)',
-  synthesis: 'var(--color-memory-300)',
+  encoding: 'var(--color-cortex-400)',
+  reconstruction: 'var(--color-emotion-calm)',
 }
 
 const BAND_LABEL: Record<PipelineStageMeta['band'], string> = {
+  stimulus: 'Stimulus',
   acquisition: 'Acquisition',
-  analysis: 'Analysis',
-  inference: 'Inference',
-  synthesis: 'Synthesis',
+  encoding: 'Encoding',
+  reconstruction: 'Reconstruction',
 }
 
 function StageRow({ stage, index }: { stage: PipelineStageMeta; index: number }) {
@@ -86,12 +86,12 @@ export function HowItWorks() {
     <Section
       id="how-it-works"
       label="How memory reconstruction works"
-      title="Twelve stages between scalp voltage and somewhere you can stand."
+      title="Ten stages between scalp voltage and a scored reconstruction."
       lede={
         <>
-          Each stage narrows what the signal could mean. Nothing is invented to fill a
-          gap — where a stage cannot commit, that uncertainty is carried forward and
-          becomes visible in the world itself.
+          Memories, not dreams: because a reference event exists, every stage can be
+          checked against what was actually shown. Nothing is invented to fill a gap —
+          uncertainty is carried forward and shows up in the fidelity numbers.
         </>
       }
     >
@@ -120,11 +120,12 @@ export function HowItWorks() {
           'text-[0.85rem] leading-relaxed text-ink-muted',
         )}
       >
-        <span className="text-ink">On honesty.</span> The pipeline reports what it can
-        support and nothing more. Cognitive state is recovered at roughly 2.4× chance and
-        affect at 2.9×, measured against known ground truth. Those numbers are why
-        reconstructions arrive incomplete: confidence is the budget the renderer spends
-        on detail.
+        <span className="text-ink">On honesty.</span> On clips never seen during
+        fitting, reconstructions beat a mean-frame baseline by 2.3× on composite
+        fidelity — but lose to it on SSIM, because a constant image is spatially smooth
+        and scalp EEG carries almost no spatial detail. What is recovered is temporal:
+        when the scene brightened, when it moved, and where it cut. Both numbers are
+        reported.
       </motion.p>
     </Section>
   )

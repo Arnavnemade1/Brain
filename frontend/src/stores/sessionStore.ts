@@ -1,8 +1,8 @@
 /**
- * Live session state.
+ * Live reconstruction session state.
  *
- * Owns the socket, the rolling frame history and the reconstruction being
- * assembled. Everything the console and the 3D engine render comes from here.
+ * Owns the socket, the rolling neural history, and the reconstructed frames
+ * paired with the reference they are scored against.
  */
 
 import { create } from 'zustand'
@@ -13,18 +13,46 @@ import { SessionSocket } from '@/services/socket'
 import { PIPELINE_STAGE_IDS } from '@/types'
 import type {
   ConnectionStatus,
-  MemoryFragment,
-  MemoryNarrative,
+  FidelityMetrics,
+  FrameFidelity,
+  LatentPoint,
   NeuralFrame,
   PipelineStageState,
+  ReconstructionReport,
   ReconstructionStatus,
-  SceneParameters,
+  SceneEstimate,
   StreamCommand,
   StreamEvent,
+  VisualFeatures,
 } from '@/types'
 
-/** Frames retained for the timeline and trend charts. */
-const FRAME_HISTORY = 320
+/** Neural frames retained for trend charts. */
+const NEURAL_HISTORY = 240
+
+/**
+ * One reconstructed moment, paired with its reference.
+ *
+ * Held together deliberately: every claim the UI makes about a frame is a
+ * comparison, so separating them would let the two drift out of step.
+ */
+export interface ReplayFrame {
+  index: number
+  t: number
+  /** Base64 RGB at grid resolution. */
+  pixels: string
+  reference: string
+  scene: SceneEstimate
+  truth: VisualFeatures
+  fidelity: FrameFidelity
+}
+
+export interface SyncInfo {
+  offsetSeconds: number
+  driftPpm: number
+  residualMs: number
+  markersMatched: number
+  markersExpected: number
+}
 
 function idleStages(): PipelineStageState[] {
   return PIPELINE_STAGE_IDS.map((id) => ({
@@ -39,48 +67,42 @@ function idleStages(): PipelineStageState[] {
 }
 
 interface SessionState {
-  /* --- connection --- */
   sessionId: string | null
   meta: SessionCreated | null
   connection: ConnectionStatus
   error: string | null
   starting: boolean
 
-  /* --- transport --- */
   playing: boolean
   speed: number
 
-  /* --- live data --- */
   frame: NeuralFrame | null
   frames: NeuralFrame[]
   stages: PipelineStageState[]
+  latents: LatentPoint[]
 
-  /* --- reconstruction --- */
+  sync: SyncInfo | null
   status: ReconstructionStatus
   progress: number
-  confidence: number
-  coherence: number
-  scene: SceneParameters | null
-  regionConfidence: Record<string, number>
-  /** Regions that crossed the threshold this session, newest last. */
-  resolvedRegions: string[]
-  fragments: MemoryFragment[]
-  narrative: MemoryNarrative | null
+  fidelity: number
 
-  /* --- fragment interaction --- */
-  openFragmentId: string | null
-  revealedFragmentIds: string[]
+  replay: ReplayFrame[]
+  metrics: FidelityMetrics | null
+  report: ReconstructionReport | null
 
-  /* --- actions --- */
-  startSimulation: (profile: string, duration: number, speed?: number) => Promise<void>
-  startUpload: (file: File, speed?: number) => Promise<void>
+  /** Index into `replay` currently shown in the player. */
+  playhead: number
+  /** Follow the newest frame while streaming. */
+  following: boolean
+
+  startSession: (clip: string, condition: string, speed?: number) => Promise<void>
   send: (command: StreamCommand) => void
   pause: () => void
   resume: () => void
   stop: () => Promise<void>
   setSpeed: (speed: number) => void
-  focusRegion: (regionId: string) => void
-  openFragment: (id: string | null) => void
+  setPlayhead: (index: number) => void
+  setFollowing: (following: boolean) => void
   reset: () => void
   clearError: () => void
 }
@@ -94,21 +116,20 @@ const initial = {
   error: null,
   starting: false,
   playing: false,
-  speed: 1,
+  speed: 2,
   frame: null,
   frames: [] as NeuralFrame[],
   stages: idleStages(),
+  latents: [] as LatentPoint[],
+  sync: null,
   status: 'idle' as ReconstructionStatus,
   progress: 0,
-  confidence: 0,
-  coherence: 0,
-  scene: null,
-  regionConfidence: {} as Record<string, number>,
-  resolvedRegions: [] as string[],
-  fragments: [] as MemoryFragment[],
-  narrative: null,
-  openFragmentId: null,
-  revealedFragmentIds: [] as string[],
+  fidelity: 0,
+  replay: [] as ReplayFrame[],
+  metrics: null,
+  report: null,
+  playhead: 0,
+  following: true,
 }
 
 export const useSessionStore = create<SessionState>()(
@@ -116,13 +137,28 @@ export const useSessionStore = create<SessionState>()(
     function handleEvent(event: StreamEvent): void {
       switch (event.type) {
         case 'session.opened':
-          set({ status: 'acquiring', playing: true })
+          set({ status: 'synchronising', playing: true })
+          break
+
+        case 'sync':
+          set({
+            sync: {
+              offsetSeconds: event.offsetSeconds,
+              driftPpm: event.driftPpm,
+              residualMs: event.residualMs,
+              markersMatched: event.markersMatched,
+              markersExpected: event.markersExpected,
+            },
+            status: 'encoding',
+          })
           break
 
         case 'frame':
           set((state) => {
             const frames = [...state.frames, event.frame]
-            if (frames.length > FRAME_HISTORY) frames.splice(0, frames.length - FRAME_HISTORY)
+            if (frames.length > NEURAL_HISTORY) {
+              frames.splice(0, frames.length - NEURAL_HISTORY)
+            }
             return { frame: event.frame, frames }
           })
           break
@@ -131,63 +167,72 @@ export const useSessionStore = create<SessionState>()(
           set({ stages: event.stages })
           break
 
-        case 'scene':
-          set({
-            scene: event.scene,
-            regionConfidence: Object.fromEntries(
-              event.scene.regions.map((r) => [r.id, r.confidence]),
-            ),
-            status: 'reconstructing',
+        case 'latent':
+          set((state) => {
+            const latents = [...state.latents, event.point]
+            if (latents.length > NEURAL_HISTORY) {
+              latents.splice(0, latents.length - NEURAL_HISTORY)
+            }
+            return { latents }
           })
           break
 
-        case 'scene.update':
-          set((state) => ({
-            regionConfidence: { ...state.regionConfidence, ...event.regionConfidence },
-            resolvedRegions: [...state.resolvedRegions, ...event.resolvedRegions],
-            scene: state.scene
-              ? { ...state.scene, ...event.patch, regions: state.scene.regions }
-              : state.scene,
-          }))
+        case 'reconstruction.frame':
+          set((state) => {
+            const replay = [
+              ...state.replay,
+              {
+                index: event.frame.index,
+                t: event.frame.t,
+                pixels: event.frame.pixels,
+                reference: event.reference,
+                scene: event.scene,
+                truth: event.truth,
+                fidelity: event.fidelity,
+              },
+            ]
+            return {
+              replay,
+              // Only advance the playhead while following, so scrubbing back
+              // through earlier frames is not yanked forward by new arrivals.
+              playhead: state.following ? replay.length - 1 : state.playhead,
+            }
+          })
           break
 
-        case 'fragment':
-          set((state) =>
-            state.fragments.some((f) => f.id === event.fragment.id)
-              ? state
-              : { fragments: [...state.fragments, event.fragment] },
-          )
-          break
-
-        case 'reconstruction':
+        case 'progress':
           set({
             status: event.status,
             progress: event.progress,
-            confidence: event.confidence,
-            coherence: event.coherence,
+            fidelity: event.fidelity,
           })
           break
 
-        case 'narrative':
-          set({ narrative: event.narrative })
+        case 'metrics':
+          set({ metrics: event.metrics, fidelity: event.metrics.composite })
+          break
+
+        case 'report':
+          set({ report: event.report })
           break
 
         case 'session.closed':
+          // The server closes the socket right after this; tell the client so
+          // a normal completion is not mistaken for a dropped connection.
+          socket?.finish()
           set({
             playing: false,
-            status: event.reason === 'error' ? 'error' : 'stabilised',
+            status: event.reason === 'error' ? 'error' : 'complete',
             error: event.reason === 'error' ? event.message : null,
           })
           break
 
         case 'error':
-          // Recoverable errors annotate the affected stage but leave the
-          // session running; only fatal ones surface as a page-level error.
           if (event.recoverable) {
             set((state) => ({
               stages: state.stages.map((stage) =>
                 stage.id === event.stage
-                  ? { ...stage, status: 'error', message: event.message }
+                  ? { ...stage, status: 'degraded', message: event.message }
                   : stage,
               ),
             }))
@@ -212,33 +257,18 @@ export const useSessionStore = create<SessionState>()(
     return {
       ...initial,
 
-      async startSimulation(profile, duration, speed = 1) {
+      async startSession(clip, condition, speed = 2) {
         get().reset()
         set({ starting: true, error: null, speed })
         try {
-          const meta = await api.startSimulation({ profile, duration, speed })
+          const meta = await api.startSession({ clip, condition, speed })
           set({ sessionId: meta.sessionId, meta, starting: false })
           connect(meta, speed)
         } catch (error) {
           set({
             starting: false,
-            error: error instanceof Error ? error.message : 'Could not start the session.',
-          })
-          throw error
-        }
-      },
-
-      async startUpload(file, speed = 1) {
-        get().reset()
-        set({ starting: true, error: null, speed })
-        try {
-          const meta = await api.uploadRecording(file, { speed })
-          set({ sessionId: meta.sessionId, meta, starting: false })
-          connect(meta, speed)
-        } catch (error) {
-          set({
-            starting: false,
-            error: error instanceof Error ? error.message : 'Could not read that recording.',
+            error:
+              error instanceof Error ? error.message : 'Could not start the session.',
           })
           throw error
         }
@@ -263,8 +293,6 @@ export const useSessionStore = create<SessionState>()(
         socket?.send({ type: 'stop' })
         set({ playing: false })
         if (sessionId) {
-          // Best effort: the socket teardown also persists server-side, so a
-          // failure here is not worth surfacing to the user.
           await api.stopSession(sessionId).catch(() => undefined)
         }
       },
@@ -274,33 +302,23 @@ export const useSessionStore = create<SessionState>()(
         socket?.send({ type: 'speed', speed })
       },
 
-      focusRegion(regionId) {
-        socket?.send({ type: 'focus', regionId })
+      setPlayhead(index) {
+        const { replay } = get()
+        const clamped = Math.max(0, Math.min(index, replay.length - 1))
+        set({ playhead: clamped, following: clamped >= replay.length - 1 })
       },
 
-      openFragment(id) {
+      setFollowing(following) {
         set((state) => ({
-          openFragmentId: id,
-          revealedFragmentIds:
-            id && !state.revealedFragmentIds.includes(id)
-              ? [...state.revealedFragmentIds, id]
-              : state.revealedFragmentIds,
+          following,
+          playhead: following ? Math.max(0, state.replay.length - 1) : state.playhead,
         }))
-
-        // Opening a low-confidence fragment spends evidence resolving the
-        // region it gates — this is the "memory becoming clearer" mechanic.
-        if (id) {
-          const fragment = get().fragments.find((f) => f.id === id)
-          if (fragment?.unlocksRegion) {
-            socket?.send({ type: 'focus', regionId: fragment.unlocksRegion })
-          }
-        }
       },
 
       reset() {
         socket?.close()
         socket = null
-        set({ ...initial, stages: idleStages(), frames: [] })
+        set({ ...initial, stages: idleStages(), frames: [], replay: [], latents: [] })
       },
 
       clearError() {
@@ -314,16 +332,8 @@ export const useSessionStore = create<SessionState>()(
 /* Selectors                                                                  */
 /* -------------------------------------------------------------------------- */
 
-export const selectElapsed = (state: SessionState): number => state.frame?.t ?? 0
-
-export const selectResolvedCount = (state: SessionState): number => {
-  if (!state.scene) return 0
-  return state.scene.regions.filter(
-    (region) =>
-      (state.regionConfidence[region.id] ?? region.confidence) >=
-      state.scene!.fragmentThreshold,
-  ).length
-}
+export const selectCurrentReplay = (state: SessionState): ReplayFrame | null =>
+  state.replay[state.playhead] ?? null
 
 export const selectIsLive = (state: SessionState): boolean =>
   state.connection === 'open' && state.playing

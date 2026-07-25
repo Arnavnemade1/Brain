@@ -1,4 +1,4 @@
-"""Neural domain models — mirrors ``frontend/src/types/neural.ts``."""
+"""Neural signal models — mirrors ``frontend/src/types/neural.ts``."""
 
 from __future__ import annotations
 
@@ -10,50 +10,7 @@ from typing_extensions import Literal
 from .base import CamelModel
 
 FrequencyBand = Literal["delta", "theta", "alpha", "beta", "gamma"]
-
-CognitiveState = Literal[
-    "focused",
-    "relaxed",
-    "drowsy",
-    "dreaming",
-    "recalling",
-    "alert",
-    "meditative",
-]
-
-EmotionLabel = Literal[
-    "calm",
-    "nostalgia",
-    "wonder",
-    "stress",
-    "curiosity",
-    "melancholy",
-    "joy",
-    "fear",
-]
-
 SignalQualityGrade = Literal["excellent", "good", "fair", "poor"]
-
-COGNITIVE_STATES: List[str] = [
-    "focused",
-    "relaxed",
-    "drowsy",
-    "dreaming",
-    "recalling",
-    "alert",
-    "meditative",
-]
-
-EMOTIONS: List[str] = [
-    "calm",
-    "nostalgia",
-    "wonder",
-    "stress",
-    "curiosity",
-    "melancholy",
-    "joy",
-    "fear",
-]
 
 
 class SignalQuality(CamelModel):
@@ -70,35 +27,60 @@ class Spectrum(CamelModel):
     peak_frequency: float
 
 
-class CognitiveReading(CamelModel):
-    state: CognitiveState
-    confidence: float = Field(ge=0.0, le=1.0)
-    distribution: Dict[str, float] = Field(default_factory=dict)
-    engagement: float = Field(ge=0.0, le=1.0)
-    load: float = Field(ge=0.0, le=1.0)
+class VisualResponse(CamelModel):
+    """Visual-system measures the encoder reads.
 
+    These are the quantities scalp EEG can actually carry about visual input.
+    Everything the reconstruction knows comes through here.
+    """
 
-class EmotionReading(CamelModel):
-    primary: EmotionLabel
-    secondary: Optional[EmotionLabel] = None
-    intensity: float = Field(ge=0.0, le=1.0)
-    valence: float = Field(ge=-1.0, le=1.0)
-    arousal: float = Field(ge=0.0, le=1.0)
-    distribution: Dict[str, float] = Field(default_factory=dict)
+    occipital_drive: float = Field(ge=0.0, le=1.0)
+    alpha_suppression: float = Field(ge=0.0, le=1.0)
+    motion_response: float = Field(ge=0.0, le=1.0)
+    transient: float = Field(ge=0.0, le=1.0)
+    detail_response: float = Field(ge=0.0, le=1.0)
+    lateral_balance: float = Field(ge=-1.0, le=1.0)
+    vertical_balance: float = Field(ge=-1.0, le=1.0)
 
 
 class NeuralFrame(CamelModel):
-    """One decoded analysis window — the atomic unit the pipeline emits."""
-
     session_id: str
     index: int
+    #: Seconds on the *stimulus* timeline, after synchronization.
     t: float
     band_powers: Dict[str, float]
     spectrum: Spectrum
     topography: Dict[str, float]
     waveform: List[float]
     signal_quality: SignalQuality
-    cognitive: CognitiveReading
-    emotion: EmotionReading
-    neural_confidence: float = Field(ge=0.0, le=1.0)
-    coherence: float = Field(ge=0.0, le=1.0)
+    visual: VisualResponse
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+class SyncResult(CamelModel):
+    """Alignment between the recording clock and the stimulus clock."""
+
+    offset_seconds: float
+    drift_ppm: float
+    residual_ms: float
+    markers_matched: int
+    markers_expected: int
+
+    @property
+    def usable(self) -> bool:
+        """Whether alignment is tight enough to attribute responses to frames."""
+        return self.markers_matched >= 2 and self.residual_ms < 120.0
+
+
+class LatentPoint(CamelModel):
+    t: float
+    vector: List[float]
+    confidence: float = Field(ge=0.0, le=1.0)
+
+
+#: Dimensionality of the memory latent space. Small on purpose: the encoder
+#: is summarising a handful of genuinely recoverable visual quantities, and a
+#: wider latent would mostly encode noise.
+LATENT_DIMENSIONS = 16
+
+_EMPTY: Optional[List[float]] = None

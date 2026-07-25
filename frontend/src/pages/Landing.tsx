@@ -6,13 +6,11 @@ import { pageVariants } from '@/animations/motion'
 import { FutureVision } from '@/components/landing/FutureVision'
 import { Hero } from '@/components/landing/Hero'
 import { HowItWorks } from '@/components/landing/HowItWorks'
-import { InteractiveViz } from '@/components/landing/InteractiveViz'
 import { LaunchCta } from '@/components/landing/LaunchCta'
 import { Technology } from '@/components/landing/Technology'
 
 const SECTIONS = [
   { id: 'how-it-works', label: 'Process' },
-  { id: 'visualisation', label: 'Visualisation' },
   { id: 'technology', label: 'Technology' },
   { id: 'future', label: 'Future' },
 ]
@@ -68,7 +66,6 @@ export default function Landing() {
 
       <Hero />
       <HowItWorks />
-      <InteractiveViz />
       <Technology />
       <FutureVision />
       <LaunchCta />
