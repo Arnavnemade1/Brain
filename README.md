@@ -120,7 +120,7 @@ backend/app/
   reconstruction/  fitted decoders, scene/frame decoding, refinement, runner
   evaluation/      SSIM, PSNR, correlations, scene-boundary F1, baselines
   api/ websocket/  REST and streaming transport
-  services/        session assembly, persistence, optional LLM
+  services/        session assembly and persistence
 
 frontend/src/
   components/replay/    the Memory Replay surface and fidelity dashboard
@@ -156,5 +156,6 @@ information ceiling, the same number becomes a readable result.
 ## Configuration
 
 Everything has a working default; copy `.env.example` to `.env` only to
-override. An OpenAI-compatible endpoint can be configured for narrative
-generation, but the product is fully functional without one.
+override. Sample rate, window length and overlap are the settings most worth
+changing — they alter what the encoder can resolve, so re-run the training
+harness after touching them.

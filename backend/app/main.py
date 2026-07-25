@@ -28,12 +28,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     store = get_store()
     log.info(
-        "MindScape %s — %d Hz · %.1fs windows · %d stored session(s) · narratives: %s",
+        "MindScape %s — %d Hz · %.1fs windows · %d stored session(s)",
         settings.version,
         settings.sample_rate,
         settings.window_seconds,
         store.count,
-        "LLM" if settings.llm_enabled else "local",
     )
     yield
     log.info("MindScape stopped")

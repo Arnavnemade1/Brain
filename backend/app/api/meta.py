@@ -31,7 +31,6 @@ class SystemInfo(CamelModel):
     window_seconds: float
     window_overlap: float
     line_frequency: float
-    llm_narratives: bool
     stage_order: List[str]
     stored_sessions: int
     active_sessions: int
@@ -46,7 +45,6 @@ async def health() -> dict:
     return {
         "status": "ok",
         "version": settings.version,
-        "llmNarratives": settings.llm_enabled,
     }
 
 
@@ -60,7 +58,6 @@ async def system() -> SystemInfo:
         window_seconds=settings.window_seconds,
         window_overlap=settings.window_overlap,
         line_frequency=settings.line_frequency,
-        llm_narratives=settings.llm_enabled,
         stage_order=list(STAGE_ORDER),
         stored_sessions=get_store().count,
         active_sessions=get_manager().count,

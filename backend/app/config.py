@@ -75,16 +75,6 @@ class Settings:
         )
     )
 
-    # --- Optional LLM narrative generation ----------------------------------
-    #: Any OpenAI-compatible endpoint. Unset means the deterministic local
-    #: narrative engine is used instead — the product works fully without it.
-    llm_base_url: str = field(default_factory=lambda: os.getenv("MINDSCAPE_LLM_BASE_URL", ""))
-    llm_api_key: str = field(default_factory=lambda: os.getenv("MINDSCAPE_LLM_API_KEY", ""))
-    llm_model: str = field(
-        default_factory=lambda: os.getenv("MINDSCAPE_LLM_MODEL", "gpt-4o-mini")
-    )
-    llm_timeout: float = field(default_factory=lambda: _env_float("MINDSCAPE_LLM_TIMEOUT", 12.0))
-
     # --- CORS ---------------------------------------------------------------
     cors_origins: List[str] = field(
         default_factory=lambda: [
@@ -96,10 +86,6 @@ class Settings:
             if o.strip()
         ]
     )
-
-    @property
-    def llm_enabled(self) -> bool:
-        return bool(self.llm_base_url and self.llm_api_key)
 
     @property
     def window_samples(self) -> int:
