@@ -1,0 +1,8 @@
+# MindScape backend — Python 3.9+
+fastapi>=0.115,<0.120
+uvicorn[standard]>=0.30
+pydantic>=2.7,<3
+python-multipart>=0.0.9
+numpy>=1.24
+scipy>=1.10
+httpx>=0.27

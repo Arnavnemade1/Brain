@@ -1,0 +1,5 @@
+# Optional extras. The backend degrades gracefully when these are absent:
+#   * MNE  — enables real EDF/FIF ingestion in app/services/ingest.py.
+#            Without it, uploads fall back to the built-in CSV/EDF-header reader.
+-r requirements.txt
+mne>=1.6

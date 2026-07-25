@@ -1,0 +1,323 @@
+@import 'tailwindcss';
+
+/* ============================================================================
+   MindScape design tokens
+   A dark, premium, scientifically-inspired surface. Restrained palette:
+   one cool neural accent, one warm memory accent, and emotion-mapped hues
+   that the reconstruction engine drives at runtime.
+   ========================================================================= */
+
+@theme {
+  /* --- Typography ------------------------------------------------------- */
+  --font-display:
+    'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-sans:
+    'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'SF Mono', ui-monospace, 'JetBrains Mono', 'Menlo', monospace;
+
+  --tracking-display: -0.03em;
+  --tracking-label: 0.18em;
+
+  /* --- Base surfaces ---------------------------------------------------- */
+  --color-void: #04060c;
+  --color-abyss: #05070d;
+  --color-deep: #080b14;
+  --color-surface: #0c111c;
+  --color-raised: #121826;
+
+  /* --- Ink -------------------------------------------------------------- */
+  --color-ink: #eef2f9;
+  --color-ink-soft: #b9c2d4;
+  --color-ink-muted: #7c869c;
+  --color-ink-faint: #4e576b;
+
+  /* --- Neural accent (cool) --------------------------------------------- */
+  --color-neural-50: #ecfbff;
+  --color-neural-100: #d2f4ff;
+  --color-neural-200: #a9e9ff;
+  --color-neural-300: #6fd8fb;
+  --color-neural-400: #38c1ef;
+  --color-neural-500: #16a3d6;
+  --color-neural-600: #0b81b3;
+  --color-neural-700: #0d6690;
+
+  /* --- Memory accent (warm) --------------------------------------------- */
+  --color-memory-100: #fdf0d8;
+  --color-memory-200: #f8dcab;
+  --color-memory-300: #f0c477;
+  --color-memory-400: #e2a54c;
+  --color-memory-500: #c9852f;
+
+  /* --- Cognitive accent (violet) ---------------------------------------- */
+  --color-cortex-200: #ddd6fe;
+  --color-cortex-300: #c0b1fb;
+  --color-cortex-400: #9f8bf5;
+  --color-cortex-500: #7f66e8;
+  --color-cortex-600: #6247c7;
+
+  /* --- Emotion mapping -------------------------------------------------- */
+  --color-emotion-calm: #5fd4c4;
+  --color-emotion-nostalgia: #e8b464;
+  --color-emotion-wonder: #a48bf2;
+  --color-emotion-stress: #e0736b;
+  --color-emotion-curiosity: #52c4ea;
+  --color-emotion-melancholy: #6b83c9;
+  --color-emotion-joy: #f2c14e;
+  --color-emotion-fear: #b26bc9;
+
+  /* --- Signal semantics ------------------------------------------------- */
+  --color-signal-good: #58d69d;
+  --color-signal-fair: #e8c15f;
+  --color-signal-poor: #e0776b;
+
+  /* --- Motion ----------------------------------------------------------- */
+  --ease-glide: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-settle: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-drift: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* --- Radius ----------------------------------------------------------- */
+  --radius-panel: 1.25rem;
+  --radius-card: 1rem;
+  --radius-pill: 999px;
+
+  /* --- Animations ------------------------------------------------------- */
+  --animate-breathe: breathe 7s var(--ease-drift) infinite;
+  --animate-pulse-ring: pulse-ring 3.2s var(--ease-glide) infinite;
+  --animate-scan: scan 4.5s var(--ease-drift) infinite;
+  --animate-shimmer: shimmer 2.4s linear infinite;
+  --animate-float-slow: float-slow 9s var(--ease-drift) infinite;
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.32;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.06);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.7;
+  }
+  70%,
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@keyframes scan {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  12%,
+  88% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(1100%);
+    opacity: 0;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -160% 0;
+  }
+  to {
+    background-position: 260% 0;
+  }
+}
+
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* ============================================================================
+   Base
+   ========================================================================= */
+
+@layer base {
+  html {
+    color-scheme: dark;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background-color: var(--color-abyss);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    overscroll-behavior-y: none;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: var(--tracking-display);
+    font-weight: 500;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-neural-400) 32%, transparent);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid color-mix(in oklab, var(--color-neural-300) 70%, transparent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Scrollbars — thin and ambient, never chrome-heavy */
+  ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--color-ink) 12%, transparent);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--color-ink) 22%, transparent);
+    background-clip: content-box;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+/* ============================================================================
+   Utilities
+   ========================================================================= */
+
+@utility glass {
+  background: linear-gradient(
+    145deg,
+    color-mix(in oklab, var(--color-ink) 7%, transparent),
+    color-mix(in oklab, var(--color-ink) 2.5%, transparent)
+  );
+  backdrop-filter: blur(28px) saturate(150%);
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  border: 1px solid color-mix(in oklab, var(--color-ink) 9%, transparent);
+  box-shadow:
+    0 1px 0 0 color-mix(in oklab, var(--color-ink) 7%, transparent) inset,
+    0 24px 60px -32px rgb(0 0 0 / 0.9);
+}
+
+@utility glass-strong {
+  background: linear-gradient(
+    145deg,
+    color-mix(in oklab, var(--color-ink) 10%, transparent),
+    color-mix(in oklab, var(--color-deep) 82%, transparent)
+  );
+  backdrop-filter: blur(40px) saturate(160%);
+  -webkit-backdrop-filter: blur(40px) saturate(160%);
+  border: 1px solid color-mix(in oklab, var(--color-ink) 11%, transparent);
+  box-shadow:
+    0 1px 0 0 color-mix(in oklab, var(--color-ink) 9%, transparent) inset,
+    0 40px 90px -40px rgb(0 0 0 / 0.95);
+}
+
+@utility glass-faint {
+  background: color-mix(in oklab, var(--color-ink) 3.5%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid color-mix(in oklab, var(--color-ink) 6%, transparent);
+}
+
+/* Hairline separator that fades at both ends */
+@utility rule-fade {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--color-ink) 14%, transparent) 22%,
+    color-mix(in oklab, var(--color-ink) 14%, transparent) 78%,
+    transparent
+  );
+}
+
+@utility text-label {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  line-height: 1;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+@utility text-readout {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Fine grain keeps large dark gradients from banding */
+@utility grain-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.4'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+}
+
+@utility mask-fade-b {
+  mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+}
+
+@utility mask-fade-x {
+  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+}
+
+@utility shimmer-text {
+  background: linear-gradient(
+    100deg,
+    var(--color-ink-faint) 20%,
+    var(--color-ink) 42%,
+    var(--color-ink-faint) 64%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: var(--animate-shimmer);
+}

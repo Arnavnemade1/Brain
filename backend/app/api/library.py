@@ -1,0 +1,137 @@
+"""Memory library — stored sessions, search, bookmarks and export."""
+
+from __future__ import annotations
+
+from typing import List, Optional
+
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import PlainTextResponse
+
+from ..models.base import CamelModel
+from ..models.memory import SessionRecord, SessionSummary
+from ..services.store import get_store
+
+router = APIRouter(prefix="/api/library", tags=["library"])
+
+
+class BookmarkRequest(CamelModel):
+    bookmarked: bool
+
+
+@router.get("/sessions", response_model=List[SessionSummary])
+async def list_sessions(
+    limit: int = Query(default=100, ge=1, le=500),
+    q: Optional[str] = Query(default=None, description="Free-text search"),
+    bookmarked: Optional[bool] = Query(default=None),
+) -> List[SessionSummary]:
+    """Stored sessions, newest first."""
+    items = get_store().list(limit=limit, query=q)
+    if bookmarked is not None:
+        items = [s for s in items if s.bookmarked == bookmarked]
+    return items
+
+
+@router.get("/sessions/{session_id}", response_model=SessionRecord)
+async def get_session(session_id: str) -> SessionRecord:
+    record = get_store().get(session_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"No stored session {session_id}")
+    return record
+
+
+@router.delete("/sessions/{session_id}")
+async def delete_session(session_id: str) -> dict:
+    if not get_store().delete(session_id):
+        raise HTTPException(status_code=404, detail=f"No stored session {session_id}")
+    return {"deleted": session_id}
+
+
+@router.post("/sessions/{session_id}/bookmark", response_model=SessionSummary)
+async def set_bookmark(session_id: str, request: BookmarkRequest) -> SessionSummary:
+    record = get_store().set_bookmark(session_id, request.bookmarked)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"No stored session {session_id}")
+    return SessionSummary.model_validate(record.model_dump(by_alias=True))
+
+
+@router.get("/sessions/{session_id}/report", response_class=PlainTextResponse)
+async def export_report(session_id: str) -> str:
+    """Human-readable Markdown report for a reconstruction."""
+    record = get_store().get(session_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail=f"No stored session {session_id}")
+    return _render_report(record)
+
+
+def _render_report(record: SessionRecord) -> str:
+    scene = record.scene
+    resolved = sum(1 for r in scene.regions if r.confidence >= scene.fragment_threshold)
+
+    lines: List[str] = [
+        f"# {record.narrative.title}",
+        "",
+        f"**Session** `{record.id}` · version {record.version}  ",
+        f"**Recorded** {record.created_at}  ",
+        f"**Duration** {record.duration_seconds:.0f}s · **Source** {record.source}",
+        "",
+        "## Summary",
+        "",
+        record.narrative.summary,
+        "",
+        "## Reconstruction",
+        "",
+        f"| Field | Value |",
+        f"| --- | --- |",
+        f"| Setting | {scene.biome.replace('_', ' ')} |",
+        f"| Lighting | {scene.lighting.time_of_day}, {scene.lighting.temperature:.0f}K |",
+        f"| Weather | {scene.atmosphere.weather} |",
+        f"| Primary emotion | {record.primary_emotion} |",
+        f"| Cognitive state | {record.dominant_cognitive_state} |",
+        f"| Neural confidence | {record.confidence * 100:.0f}% |",
+        f"| Coherence | {record.coherence * 100:.0f}% |",
+        f"| Regions resolved | {resolved} of {len(scene.regions)} |",
+        f"| Fragments recovered | {len(record.fragments)} |",
+        "",
+        "## Observations",
+        "",
+    ]
+
+    lines.extend(f"- {observation}" for observation in record.narrative.observations)
+    lines.extend(["", "## Uncertainties", ""])
+    lines.extend(f"- {uncertainty}" for uncertainty in record.narrative.uncertainties)
+
+    lines.extend(["", "## Memory fragments", ""])
+    for fragment in record.fragments:
+        lines.extend(
+            [
+                f"### {fragment.title}",
+                "",
+                f"*{fragment.emotion} · {fragment.confidence * 100:.0f}% confidence · "
+                f"t+{fragment.source_time:.0f}s*",
+                "",
+                fragment.description,
+                "",
+                f"**Sensory detail:** {', '.join(fragment.sensory_details)}  ",
+                f"**Neural evidence:** {fragment.neural_evidence}",
+                "",
+            ]
+        )
+
+    if record.history:
+        lines.extend(["## Version history", "", "| Version | Confidence | Change |", "| --- | --- | --- |"])
+        for version in record.history:
+            lines.append(
+                f"| {version.version} | {version.confidence * 100:.0f}% | {version.delta} |"
+            )
+        lines.append("")
+
+    lines.extend(
+        [
+            "---",
+            "",
+            "*Generated by MindScape. This reconstruction is an inference from neural "
+            "signal, not a recovered record of events.*",
+        ]
+    )
+
+    return "\n".join(lines)
