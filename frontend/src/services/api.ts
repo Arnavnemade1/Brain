@@ -5,7 +5,14 @@
  * errors — the UI shows those verbatim rather than a generic failure.
  */
 
-import type { SessionRecord, SessionSummary, StimulusClip } from '@/types'
+import type {
+  RealDataStatus,
+  RealResults,
+  RealViewing,
+  SessionRecord,
+  SessionSummary,
+  StimulusClip,
+} from '@/types'
 
 export class ApiError extends Error {
   readonly status: number
@@ -142,6 +149,29 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ bookmarked }),
     }),
+
+  /* --- real-subject EEG --- */
+
+  realStatus: () => request<RealDataStatus>('/api/real/status'),
+
+  realResults: () => request<RealResults>('/api/real/results'),
+
+  realViewings: (subject: string) =>
+    request<{ subject: string; viewings: number[]; trainingTrials: number }>(
+      `/api/real/subjects/${subject}/viewings`,
+    ),
+
+  realReconstruct: (
+    subject: string,
+    params?: { stimulus?: number; trials?: number; seed?: number },
+  ) => {
+    const search = new URLSearchParams()
+    if (params?.stimulus != null) search.set('stimulus', String(params.stimulus))
+    if (params?.trials != null) search.set('trials', String(params.trials))
+    if (params?.seed != null) search.set('seed', String(params.seed))
+    const suffix = search.toString() ? `?${search}` : ''
+    return request<RealViewing>(`/api/real/subjects/${subject}/reconstruct${suffix}`)
+  },
 
   reportUrl: (id: string) => `/api/library/sessions/${id}/report`,
 

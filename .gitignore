@@ -10,3 +10,6 @@ __pycache__/
 .env.*
 !.env.example
 frontend/dist/
+
+# Downloaded EEG recordings (2.4 GB) — fetch with tools/fetch_dataset.py
+data/

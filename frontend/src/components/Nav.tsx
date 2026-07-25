@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Command, Library, Settings2, Waves } from 'lucide-react'
+import { Brain, Command, Library, Settings2, Waves } from 'lucide-react'
 import { NavLink, useLocation } from 'react-router-dom'
 
 import { cn } from '@/lib/cn'
@@ -9,6 +9,7 @@ import { Badge } from '@/ui'
 
 const LINKS = [
   { to: '/session', label: 'Session', icon: Waves },
+  { to: '/real', label: 'Real EEG', icon: Brain },
   { to: '/library', label: 'Library', icon: Library },
   { to: '/settings', label: 'Settings', icon: Settings2 },
 ] as const

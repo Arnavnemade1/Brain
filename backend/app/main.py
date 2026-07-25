@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from .api import library, meta, sessions
+from .api import library, meta, realdata, sessions
 from .config import get_settings
 from .services.store import get_store
 from .websocket import session_stream
@@ -62,6 +62,7 @@ def create_app() -> FastAPI:
     app.include_router(meta.router)
     app.include_router(sessions.router)
     app.include_router(library.router)
+    app.include_router(realdata.router)
     app.include_router(session_stream.router)
 
     @app.exception_handler(Exception)

@@ -10,7 +10,39 @@ shown.
 
 ---
 
-## What it actually recovers
+## Real human EEG
+
+The headline capability runs on **recordings of actual people** viewing 200
+objects — not simulation. From held-out brain activity the system ranks all 200
+candidates and returns the best matches.
+
+| | Result | Chance |
+| --- | --- | --- |
+| Exact object recovered (200-way) | **6.1%** | 0.5% |
+| Correct object in top 5 | **17.8%** | 2.5% |
+| Animate vs inanimate | **67.4%** | 50% |
+| Category (10-way) | **32.4%** | 10% |
+
+Twelve times chance for an exact hit — which also means the top candidate is
+wrong 94% of the time. The errors are the informative part: when the exact
+object is not first, the candidates beating it are usually from the same
+category. **EEG carries what kind of thing was seen far more reliably than
+which particular one.**
+
+Controls: shuffled labels collapse to chance (0.88%), pre-stimulus decoding
+sits at 49.9%, peak at +284 ms, and a strict time split matches the
+cross-validated numbers.
+
+Full methodology, the dataset choice, and why generation was rejected in
+favour of retrieval: [`backend/REAL_DATA.md`](backend/REAL_DATA.md).
+
+---
+
+## Simulated end-to-end pipeline
+
+The video-reconstruction pipeline below runs on synthetic EEG from a forward
+model of visual response, which lets it be evaluated frame by frame against a
+known reference.
 
 Honest numbers, on clips never seen during decoder fitting:
 
@@ -31,9 +63,9 @@ on by construction. Hence the 2.3× composite margin.
 
 Full methodology and every calibration decision: [`backend/CALIBRATION.md`](backend/CALIBRATION.md).
 
-> The EEG here is **synthetic**, produced by a forward model of visual response.
-> Reported fidelity is an upper bound; real recordings carry noise and
-> individual variability the model does not capture.
+> The EEG in *this* section is **synthetic**, produced by a forward model of
+> visual response. Reported fidelity is an upper bound. The real-EEG results
+> above are measured on human recordings.
 
 ---
 
@@ -103,6 +135,13 @@ Then open <http://localhost:5173>.
 
 ```bash
 cd backend
+
+# Real human EEG
+.venv/bin/python -m tools.fetch_dataset --subjects 4   # ~2.4 GB from OpenNeuro
+.venv/bin/python -m tools.decode_real                  # accuracy + leakage controls
+.venv/bin/python -m tools.reconstruct_real --trials 8  # retrieval + contact sheet
+
+# Simulated pipeline
 .venv/bin/python -m tools.train_decoders   # fit decoders, report held-out recovery
 .venv/bin/python -m tools.evaluate         # score reconstructions vs baseline
 ```
@@ -113,6 +152,7 @@ cd backend
 
 ```
 backend/app/
+  realdata/        real EEG: BrainVision reader, epoching, decoding, retrieval
   stimulus/        reference clips and ground-truth visual features
   simulation/      stimulus-locked EEG synthesis (forward visual model)
   processing/      filtering, spectral estimation, quality, synchronization
@@ -123,6 +163,7 @@ backend/app/
   services/        session assembly and persistence
 
 frontend/src/
+  pages/RealSubjects    what a person saw beside what their EEG recovered
   components/replay/    the Memory Replay surface and fidelity dashboard
   components/session/   pipeline flow, telemetry, launcher
   components/viz/       spectrum, topography, waveform
