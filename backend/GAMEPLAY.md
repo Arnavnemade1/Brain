@@ -78,3 +78,37 @@ and how it was going. It is not a replay of what they saw.
 - **The game log's richer state** — player position, antagonist position, loot
   boxes — is in the dataset and unused. Decoding continuous position would be
   much closer to reconstructing the scene itself.
+
+---
+
+## Continuous reconstruction — no event log at inference
+
+The limitation above ("event timing comes from the game log") is removed by
+`tools/render_memory_video.py`. A window slides across the entire recording and
+the EEG alone decides, every 250 ms, what is happening: firing, reward, crash,
+or nothing. An **idle** class is included and sampled from the gaps between
+real events, because most of a session is uneventful and a decoder that never
+predicts absence would report constant action.
+
+| Continuous, leave-one-subject-out | Result | Chance |
+| --- | --- | --- |
+| **Event detection — recall** | **76.6%** | — |
+| **Event detection — precision** | **72.6%** | — |
+| 4-class balanced | 28.7% | 25% |
+| Which event (3-class) | 30.2% | 33% |
+
+**Detection works; classification does not.** From EEG alone the system finds
+*when* something happened at 76.6% recall and 72.6% precision. Asked *which*
+of the three it was, continuously, it is at chance — 30.2% against 33%.
+
+That is a sharper result than it looks, and it inverts the event-locked
+finding. Told when events occurred, 3-way classification reached 49.1%. Doing
+its own detection, the same discrimination collapses. The likely reason is
+that detection and discrimination want different decision boundaries: with
+idle windows dominating training, the classifier spends its capacity
+separating "something" from "nothing" and loses the finer distinction.
+
+So the memory video is honest in a specific way. The *rhythm* of the session —
+the pattern of when things happened, the bursts and the lulls — is genuinely
+recovered. Which particular thing happened at each of those moments mostly is
+not, and the reconstruction dims to show it.

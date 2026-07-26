@@ -7,6 +7,29 @@
 ---
 
 
+## The memory video
+
+A continuous side-by-side reconstruction: the world as it was, and the world
+as the EEG alone recovered it, played back at 25 fps.
+
+![memory video](docs/memory_video_frame.png)
+
+No event log at inference — a window slides across the whole recording and the
+brain activity decides, every 250 ms, what is happening.
+
+| Continuous, leave-one-subject-out | Result | Chance |
+| --- | --- | --- |
+| **Event detection — recall** | **76.6%** | — |
+| **Event detection — precision** | **72.6%** | — |
+| Which event it was (3-class) | 30.2% | 33% |
+
+**Detection works, classification does not.** The *rhythm* of the session is
+genuinely recovered — when things happened, the bursts and the lulls. Which
+particular thing happened at each moment mostly is not, and the right panel
+dims to show it. Nothing is drawn that was not decoded.
+
+---
+
 ## Reconstructing an activity from EEG
 
 Someone **playing a video game** — actively doing something, not passively
