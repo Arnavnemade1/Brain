@@ -2,7 +2,7 @@ import { AnimatePresence } from 'framer-motion'
 import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 
-import { Ambience } from '@/components/Ambience'
+import { Backdrop } from '@/components/Backdrop'
 import { Nav } from '@/components/Nav'
 import { ShortcutsDialog } from '@/components/ShortcutsDialog'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
@@ -17,7 +17,6 @@ const Session = lazy(() => import('@/pages/Session'))
 const Library = lazy(() => import('@/pages/Library'))
 const RealSubjects = lazy(() => import('@/pages/RealSubjects'))
 const MemoryDetail = lazy(() => import('@/pages/MemoryDetail'))
-const SettingsPage = lazy(() => import('@/pages/Settings'))
 
 function AppRoutes() {
   const location = useLocation()
@@ -30,7 +29,6 @@ function AppRoutes() {
         <Route path="/real" element={<RealSubjects />} />
         <Route path="/library" element={<Library />} />
         <Route path="/library/:sessionId" element={<MemoryDetail />} />
-        <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AnimatePresence>
@@ -38,11 +36,8 @@ function AppRoutes() {
 }
 
 export default function App() {
-  const location = useLocation()
   const navigate = useNavigate()
   const toggleShortcuts = useUiStore((s) => s.toggleShortcuts)
-
-  const onLanding = location.pathname === '/'
 
   useKeyboardShortcuts([
     {
@@ -92,8 +87,8 @@ export default function App() {
 
   return (
     <>
-      <Ambience intensity={onLanding ? 1 : 0.6} />
-      {!onLanding && <Nav />}
+      <Backdrop />
+      <Nav />
 
       <ErrorBoundary label="MindScape">
         <Suspense fallback={<LoadingState title="Loading interface" className="min-h-dvh" />}>

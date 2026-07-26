@@ -54,7 +54,7 @@ export default function RealSubjects() {
       initial="initial"
       animate="animate"
       exit="exit"
-      className="mx-auto w-[min(80rem,calc(100vw-2.5rem))] pt-24 pb-20"
+      className="shell page-y"
     >
       <motion.div variants={staggerContainer} initial="initial" animate="animate">
         <motion.header variants={riseItem} className="mb-8 max-w-3xl">
@@ -91,7 +91,7 @@ export default function RealSubjects() {
         )}
 
         {status.data?.available && (
-          <div className="grid gap-5 lg:grid-cols-[17rem_1fr]">
+          <div className="card-grid lg:grid-cols-[17rem_1fr]">
             {/* Controls + measured accuracy */}
             <div className="space-y-5">
               <Panel label="Subject" title="Recording" animate={false}>

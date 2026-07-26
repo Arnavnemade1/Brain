@@ -5,7 +5,6 @@ import {
   Bookmark,
   BookmarkCheck,
   CheckCircle2,
-  Clock,
   Download,
   FileCode,
   FileText,
@@ -19,7 +18,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { pageVariants } from '@/animations/motion'
 import { api } from '@/services/api'
 import { METRIC_DESCRIPTORS, type SessionRecord } from '@/types'
-import { Badge, Button, EmptyState, ErrorNotice, LoadingState, Meter, Stat } from '@/ui'
+import { Badge, ErrorNotice, LoadingState, Meter, Stat } from '@/ui'
 
 export default function MemoryDetail() {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -66,14 +65,13 @@ export default function MemoryDetail() {
 
   if (isError || !session) {
     return (
-      <div className="mx-auto max-w-4xl px-6 pt-24 pb-16">
+      <div className="shell page-y">
         <Link to="/library" className="inline-flex items-center gap-2 text-sm text-ink-muted hover:text-ink">
           <ArrowLeft className="size-4" /> Back to Library
         </Link>
         <div className="mt-8">
           <ErrorNotice
-            error={error as Error || new Error('Session not found')}
-            title="Session load failed"
+            message={String(error as Error || new Error('Session not found'))}
           />
         </div>
       </div>
@@ -88,7 +86,7 @@ export default function MemoryDetail() {
       initial="initial"
       animate="animate"
       exit="exit"
-      className="mx-auto max-w-5xl px-6 pt-24 pb-16"
+      className="shell page-y"
     >
       {/* Navigation & Header */}
       <div className="pb-6 border-b border-ink/10">
@@ -100,7 +98,7 @@ export default function MemoryDetail() {
           <div>
             <div className="flex items-center gap-3">
               <span className="font-mono text-xs text-neural-300">#{session.id}</span>
-              <Badge variant={session.source === 'synthetic' ? 'neutral' : 'active'}>
+              <Badge>
                 {session.source}
               </Badge>              <span className="text-xs text-ink-muted">v{session.version}</span>
             </div>
@@ -191,25 +189,25 @@ export default function MemoryDetail() {
                 <Stat
                   label="Composite Fidelity"
                   value={`${(metrics.composite * 100).toFixed(0)}%`}
-                  subtext="Weighted total score"
+                  hint="Weighted total score"
                 />
-                <Meter value={metrics.composite} max={1} className="mt-4" />
+                <Meter value={metrics.composite} className="mt-4" />
               </div>
               <div className="glass rounded-panel p-6">
                 <Stat
                   label="Structural Similarity (SSIM)"
                   value={metrics.ssim.toFixed(3)}
-                  subtext="Spatial structure agreement"
+                  hint="Spatial structure agreement"
                 />
-                <Meter value={metrics.ssim} max={1} className="mt-4" />
+                <Meter value={metrics.ssim} className="mt-4" />
               </div>
               <div className="glass rounded-panel p-6">
                 <Stat
                   label="Peak SNR"
                   value={`${metrics.psnr.toFixed(1)} dB`}
-                  subtext="Pixel-level signal to noise"
+                  hint="Pixel-level signal to noise"
                 />
-                <Meter value={Math.min(1, metrics.psnr / 30)} max={1} className="mt-4" />
+                <Meter value={Math.min(1, metrics.psnr / 30)} className="mt-4" />
               </div>
             </div>
 

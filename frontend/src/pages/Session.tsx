@@ -118,7 +118,7 @@ export default function Session() {
         initial="initial"
         animate="animate"
         exit="exit"
-        className="mx-auto w-[min(76rem,calc(100vw-2.5rem))] px-1 pt-28 pb-20"
+        className="shell page-y"
       >
         <SessionLauncher />
       </motion.main>
@@ -131,7 +131,7 @@ export default function Session() {
       initial="initial"
       animate="animate"
       exit="exit"
-      className="mx-auto w-[min(92rem,calc(100vw-2.5rem))] pt-24 pb-20"
+      className="shell-wide page-y"
     >
       {/* Transport */}
       <div className="glass-strong rounded-panel sticky top-20 z-30 mb-5 flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3.5">

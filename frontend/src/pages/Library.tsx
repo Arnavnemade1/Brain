@@ -67,7 +67,7 @@ export default function Library() {
       initial="initial"
       animate="animate"
       exit="exit"
-      className="mx-auto max-w-6xl px-6 pt-24 pb-16"
+      className="shell page-y"
     >
       {/* Top Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 pb-8 border-b border-ink/10">
@@ -141,14 +141,13 @@ export default function Library() {
           <LoadingState title="Fetching memory reconstructions..." className="py-20" />
         ) : isError ? (
           <ErrorNotice
-            error={error as Error}
-            title="Failed to load sessions"
+            message={String(error as Error)}
             onRetry={() => refetch()}
           />
         ) : sortedSessions.length === 0 ? (
           <EmptyState
             title={onlyBookmarked || searchQuery ? 'No matching sessions' : 'No memory reconstructions yet'}
-            description={
+            detail={
               onlyBookmarked || searchQuery
                 ? 'Try clearing your search query or bookmarked filter.'
                 : 'Begin a new session to reconstruct visual memories from EEG brainwaves.'
@@ -162,7 +161,7 @@ export default function Library() {
             }
           />
         ) : (
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="card-grid md:grid-cols-2 lg:grid-cols-3">
             {sortedSessions.map((session) => (
               <SessionCard
                 key={session.id}
@@ -232,7 +231,7 @@ function SessionCard({
 
         {/* Metadata pills */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Badge variant={session.source === 'synthetic' ? 'neutral' : 'active'}>
+          <Badge>
             {session.source}
           </Badge>          <span className="text-[0.75rem] text-ink-muted">{formattedDate}</span>
           <span className="text-[0.75rem] text-ink-faint">· {session.durationSeconds}s</span>
@@ -243,12 +242,12 @@ function SessionCard({
           <Stat
             label="Composite Fidelity"
             value={`${(session.fidelity * 100).toFixed(0)}%`}
-            subtext="Overall reconstruction"
+            hint="Overall reconstruction"
           />
           <Stat
             label="SSIM Score"
             value={session.ssim.toFixed(3)}
-            subtext="Structural similarity"
+            hint="Structural similarity"
           />
         </div>
       </div>

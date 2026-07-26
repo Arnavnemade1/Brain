@@ -1,74 +1,195 @@
-import { motion, useScroll, useSpring } from 'framer-motion'
+import { motion } from 'framer-motion'
+import { ArrowRight } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 
 import { pageVariants } from '@/animations/motion'
-import { FutureVision } from '@/components/landing/FutureVision'
-import { Hero } from '@/components/landing/Hero'
-import { HowItWorks } from '@/components/landing/HowItWorks'
-import { LaunchCta } from '@/components/landing/LaunchCta'
-import { Technology } from '@/components/landing/Technology'
+import { MemoryFilm } from '@/components/landing/MemoryFilm'
+import { Reveal } from '@/components/landing/Reveal'
+import { PIPELINE_STAGES } from '@/types'
 
-const SECTIONS = [
-  { id: 'how-it-works', label: 'Process' },
-  { id: 'technology', label: 'Technology' },
-  { id: 'future', label: 'Future' },
+/** Headline results. Every figure is measured; see backend/*.md. */
+const RESULTS = [
+  { value: '76.6%', label: 'Event detection recall', note: 'from EEG alone, no log' },
+  { value: '72.6%', label: 'Detection precision', note: 'continuous decoding' },
+  { value: '60.7%', label: 'Reward vs error', note: 'chance 50%' },
+  { value: '17.8%', label: 'Object in top 5', note: 'chance 2.5%' },
+]
+
+const PRINCIPLES = [
+  {
+    title: 'Measured, not illustrated',
+    body: 'Every reconstruction is scored against the reference the subject actually saw or did. Nothing is generated to fill a gap.',
+  },
+  {
+    title: 'Held out, every time',
+    body: 'Results come from subjects the model never trained on, with shuffled-label controls run through the identical pipeline.',
+  },
+  {
+    title: 'Absence over invention',
+    body: 'Where the signal carries nothing, the output shows nothing. Uncertainty is rendered, not smoothed away.',
+  },
 ]
 
 export default function Landing() {
-  const { scrollYProgress } = useScroll()
-  const progress = useSpring(scrollYProgress, { stiffness: 90, damping: 26, restDelta: 0.001 })
-
   useEffect(() => {
-    document.title = 'MindScape — Memory Reconstruction Platform'
+    document.title = 'MindScape — Memory Reconstruction'
   }, [])
 
   return (
     <motion.main variants={pageVariants} initial="initial" animate="animate" exit="exit">
-      {/* Reading progress — the only persistent chrome on this page. */}
-      <motion.div
-        style={{ scaleX: progress }}
-        className="fixed inset-x-0 top-0 z-50 h-px origin-left bg-gradient-to-r from-neural-400 via-cortex-400 to-memory-300"
-        aria-hidden
-      />
+      {/* ---------------------------------------------------------------- */}
+      {/* Hero                                                              */}
+      {/* ---------------------------------------------------------------- */}
+      {/* Height is content-driven. A `min-h` viewport hero centred its content
+          and left a much larger gap below the buttons than above the eyebrow;
+          the section rhythm below supplies the breathing room instead. */}
+      <section className="shell pt-36 pb-6 text-center">
+        <Reveal>
+          <p className="text-label mb-7">Memory Reconstruction Engine</p>
+          <h1 className="mx-auto max-w-[19ch] text-[clamp(2.4rem,5.6vw,4rem)]">
+            Reconstruct what someone lived, from brain activity.
+          </h1>
+          <p className="mx-auto mt-8 max-w-xl text-[1.02rem] leading-relaxed text-ink-muted">
+            MindScape decodes EEG recorded during real experience and rebuilds it as
+            video — then scores the result against what actually happened.
+          </p>
 
-      {/* Minimal floating header — the landing page should not carry app chrome. */}
-      <div className="fixed inset-x-0 top-0 z-40">
-        <div className="mx-auto flex w-[min(76rem,calc(100vw-2.5rem))] items-center justify-between py-5">
-          <span className="flex items-center gap-2.5">
-            <span className="relative grid size-6 place-items-center">
-              <span className="absolute inset-0 rounded-full border border-neural-300/40" />
-              <span className="size-1.5 rounded-full bg-memory-300 shadow-[0_0_10px] shadow-memory-400" />
-            </span>
-            <span className="font-display text-[0.95rem] tracking-tight">MindScape</span>
-          </span>
+          <div className="mt-10 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
+            <Link
+              to="/real"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-ink px-6 text-[0.9rem] font-medium whitespace-nowrap text-abyss transition-opacity hover:opacity-90"
+            >
+              See the reconstructions
+              <ArrowRight className="size-3.5" />
+            </Link>
+            <a
+              href="#film"
+              className="glass inline-flex h-11 items-center justify-center rounded-full px-6 text-[0.9rem] whitespace-nowrap text-ink transition-colors hover:border-ink/16"
+            >
+              Watch the memory video
+            </a>
+          </div>
+        </Reveal>
+      </section>
 
-          <nav className="hidden items-center gap-7 md:flex" aria-label="Sections">
-            {SECTIONS.map((section) => (
-              <a
-                key={section.id}
-                href={`#${section.id}`}
-                className="text-[0.8rem] text-ink-muted transition-colors hover:text-ink"
-              >
-                {section.label}
-              </a>
-            ))}
-          </nav>
+      {/* ---------------------------------------------------------------- */}
+      {/* The memory video                                                  */}
+      {/* ---------------------------------------------------------------- */}
+      <section id="film" className="shell section-y scroll-mt-20">
+        <Reveal className="mx-auto mb-12 max-w-2xl text-center">
+          <p className="text-label mb-5">The memory video</p>
+          <h2 className="text-[clamp(1.75rem,3.6vw,2.6rem)]">
+            The world as it was, and as the brain recalled it.
+          </h2>
+          <p className="mt-6 text-[0.98rem] leading-relaxed text-ink-muted">
+            A person playing a game with a headset on. Left is what happened. Right is
+            what their EEG alone recovered — no event log, decoded every 250&nbsp;ms.
+          </p>
+        </Reveal>
 
-          <Link
-            to="/session"
-            className="glass rounded-pill px-4 py-2 text-[0.8rem] text-ink transition-colors hover:border-ink/20"
-          >
-            Launch
-          </Link>
-        </div>
-      </div>
+        <Reveal>
+          <MemoryFilm />
+        </Reveal>
+      </section>
 
-      <Hero />
-      <HowItWorks />
-      <Technology />
-      <FutureVision />
-      <LaunchCta />
+      {/* ---------------------------------------------------------------- */}
+      {/* Results                                                           */}
+      {/* ---------------------------------------------------------------- */}
+      <section className="shell section-y">
+        <Reveal className="mx-auto mb-12 max-w-2xl text-center">
+          <p className="text-label mb-5">Measured</p>
+          <h2 className="text-[clamp(1.75rem,3.6vw,2.6rem)]">
+            Results on people the model never saw.
+          </h2>
+        </Reveal>
+
+        <Reveal className="card-grid grid-cols-2 lg:grid-cols-4">
+          {RESULTS.map((result) => (
+            <div
+              key={result.label}
+              className="glass rounded-panel flex flex-col justify-between p-6 text-center"
+            >
+              <p className="font-display text-[2rem] leading-none text-ink">
+                {result.value}
+              </p>
+              <p className="mt-4 text-[0.82rem] leading-snug text-ink-soft">
+                {result.label}
+              </p>
+              <p className="mt-1.5 text-[0.72rem] text-ink-faint">{result.note}</p>
+            </div>
+          ))}
+        </Reveal>
+      </section>
+
+      {/* ---------------------------------------------------------------- */}
+      {/* Pipeline                                                          */}
+      {/* ---------------------------------------------------------------- */}
+      <section className="shell section-y">
+        <Reveal className="mx-auto mb-12 max-w-2xl text-center">
+          <p className="text-label mb-5">The engine</p>
+          <h2 className="text-[clamp(1.75rem,3.6vw,2.6rem)]">
+            Ten stages, signal to scored replay.
+          </h2>
+        </Reveal>
+
+        <Reveal className="card-grid grid-cols-2 md:grid-cols-5">
+          {PIPELINE_STAGES.map((stage, index) => (
+            <div
+              key={stage.id}
+              className="glass rounded-card flex flex-col p-5"
+            >
+              <span className="text-readout mb-3 text-[0.65rem] text-neural-300">
+                {String(index + 1).padStart(2, '0')}
+              </span>
+              <p className="text-[0.86rem] leading-snug text-ink">{stage.label}</p>
+              <p className="mt-2 text-[0.72rem] leading-relaxed text-ink-faint">
+                {stage.summary}
+              </p>
+            </div>
+          ))}
+        </Reveal>
+      </section>
+
+      {/* ---------------------------------------------------------------- */}
+      {/* Principles                                                        */}
+      {/* ---------------------------------------------------------------- */}
+      <section className="shell section-y">
+        <Reveal className="card-grid md:grid-cols-3">
+          {PRINCIPLES.map((principle) => (
+            <div key={principle.title} className="glass rounded-panel p-7">
+              <h3 className="text-[1.02rem]">{principle.title}</h3>
+              <p className="mt-3 text-[0.86rem] leading-relaxed text-ink-muted">
+                {principle.body}
+              </p>
+            </div>
+          ))}
+        </Reveal>
+      </section>
+
+      {/* ---------------------------------------------------------------- */}
+      {/* Close                                                             */}
+      {/* ---------------------------------------------------------------- */}
+      <section className="shell pb-28 text-center">
+        <Reveal>
+          <h2 className="mx-auto max-w-xl text-[clamp(1.6rem,3.2vw,2.3rem)]">
+            Every number here has a control behind it.
+          </h2>
+          <div className="mt-9 flex justify-center">
+            <Link
+              to="/real"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-ink px-6 text-[0.9rem] font-medium whitespace-nowrap text-abyss transition-opacity hover:opacity-90"
+            >
+              Open the reconstructions
+              <ArrowRight className="size-3.5" />
+            </Link>
+          </div>
+          <p className="mx-auto mt-12 max-w-lg text-[0.72rem] leading-relaxed text-ink-faint">
+            A research prototype. Reconstructions are inferences from neural signal, not
+            recordings of experience.
+          </p>
+        </Reveal>
+      </section>
     </motion.main>
   )
 }

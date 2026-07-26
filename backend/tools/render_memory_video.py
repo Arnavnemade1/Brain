@@ -116,7 +116,10 @@ def _frame(
     strip_y = top + PANEL_H + 26
     draw.text((28, strip_y - 20), "DECODED STATE OVER TIME", fill=INK_FAINT, font=small)
 
-    x0, x1 = 28, WIDTH - 28
+    # The strip stops short of the right margin so the row titles drawn at
+    # ``x1 + 8`` land inside the canvas. Running it to WIDTH - 28 pushed
+    # "actual"/"decoded" off the edge, where they rendered as "actu"/"decc".
+    x0, x1 = 28, WIDTH - 96
     span = x1 - x0
     window = 30.0
     lo, hi = t - window * 0.7, t + window * 0.3
@@ -139,14 +142,23 @@ def _frame(
             width = max(3, span / max(visible.size, 1) * 0.8)
             draw.rectangle([x - width / 2, y + 4, x + width / 2, y + 26], fill=colour)
 
-        draw.text((x1 + 4, y + 8), title, fill=INK_FAINT, font=small)
+        draw.text((x1 + 8, y + 9), title, fill=INK_FAINT, font=small)
 
     head = x0 + 0.7 * span
     draw.line([head, strip_y - 4, head, strip_y + 74], fill=INK, width=2)
 
     # --- Footer -----------------------------------------------------------
+    # The legend gets its own row above the caption. Both used to be drawn on
+    # the same baseline, so the class swatches sat on top of the accuracy
+    # figures and neither was readable.
+    legend_y = HEIGHT - 78
+    for i, (name, colour) in enumerate(CLASS_COLOUR.items()):
+        lx = 28 + i * 96
+        draw.rectangle([lx, legend_y, lx + 10, legend_y + 10], fill=colour)
+        draw.text((lx + 15, legend_y - 2), name, fill=INK_MUTED, font=small)
+
     draw.text(
-        (28, HEIGHT - 60),
+        (28, HEIGHT - 54),
         f"Continuous decoding, no event log at inference. "
         f"Balanced accuracy {stats['balanced'] * 100:.0f}% over 4 classes "
         f"(chance 25%). Event detection recall {stats['recall'] * 100:.0f}%, "
@@ -155,17 +167,12 @@ def _frame(
         font=small,
     )
     draw.text(
-        (28, HEIGHT - 38),
+        (28, HEIGHT - 34),
         "Leave-one-subject-out. The right panel dims where the signal is weak; "
         "nothing is drawn that was not decoded.",
         fill=INK_FAINT,
         font=small,
     )
-
-    for i, (name, colour) in enumerate(CLASS_COLOUR.items()):
-        lx = WIDTH - 400 + i * 96
-        draw.rectangle([lx, HEIGHT - 58, lx + 10, HEIGHT - 48], fill=colour)
-        draw.text((lx + 15, HEIGHT - 60), name, fill=INK_MUTED, font=small)
 
     return np.asarray(image)
 
