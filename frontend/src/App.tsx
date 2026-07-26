@@ -37,6 +37,7 @@ function AppRoutes() {
 
 export default function App() {
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const toggleShortcuts = useUiStore((s) => s.toggleShortcuts)
 
   useKeyboardShortcuts([
@@ -87,7 +88,7 @@ export default function App() {
 
   return (
     <>
-      <Backdrop />
+      <Backdrop dimmed={pathname !== '/'} />
       <Nav />
 
       <ErrorBoundary label="MindScape">

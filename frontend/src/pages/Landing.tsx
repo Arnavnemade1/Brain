@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, ChevronDown } from 'lucide-react'
 import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -10,7 +10,11 @@ import { PIPELINE_STAGES } from '@/types'
 
 /** Headline results. Every figure is measured; see backend/*.md. */
 const RESULTS = [
-  { value: '76.6%', label: 'Event detection recall', note: 'from EEG alone, no log' },
+  {
+    value: '76.6%',
+    label: 'Event detection recall',
+    note: 'from EEG alone, no log',
+  },
   { value: '72.6%', label: 'Detection precision', note: 'continuous decoding' },
   { value: '60.7%', label: 'Reward vs error', note: 'chance 50%' },
   { value: '17.8%', label: 'Object in top 5', note: 'chance 2.5%' },
@@ -41,18 +45,18 @@ export default function Landing() {
       {/* ---------------------------------------------------------------- */}
       {/* Hero                                                              */}
       {/* ---------------------------------------------------------------- */}
-      {/* Height is content-driven. A `min-h` viewport hero centred its content
-          and left a much larger gap below the buttons than above the eyebrow;
-          the section rhythm below supplies the breathing room instead. */}
-      <section className="shell pt-36 pb-6 text-center">
+      {/* Full height, so the vista behind it is actually a vista. The copy is
+          centred in the sky above the horizon line, which sits at ~62% of the
+          frame; the scroll cue below sits over the ridges. */}
+      <section className="shell relative flex min-h-[100svh] flex-col justify-center pt-20 pb-32 text-center">
         <Reveal>
           <p className="text-label mb-7">Memory Reconstruction Engine</p>
-          <h1 className="mx-auto max-w-[19ch] text-[clamp(2.4rem,5.6vw,4rem)]">
+          <h1 className="mx-auto max-w-[19ch] text-[clamp(2.6rem,6vw,4.4rem)]">
             Reconstruct what someone lived, from brain activity.
           </h1>
-          <p className="mx-auto mt-8 max-w-xl text-[1.02rem] leading-relaxed text-ink-muted">
-            MindScape decodes EEG recorded during real experience and rebuilds it as
-            video — then scores the result against what actually happened.
+          <p className="mx-auto mt-8 max-w-xl text-[1.02rem] leading-relaxed text-ink-soft">
+            MindScape decodes EEG recorded during real experience and rebuilds it as video
+            — then scores the result against what actually happened.
           </p>
 
           <div className="mt-10 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
@@ -71,125 +75,134 @@ export default function Landing() {
             </a>
           </div>
         </Reveal>
+
+        <a
+          href="#film"
+          aria-label="Scroll to the memory video"
+          className="absolute inset-x-0 bottom-10 mx-auto w-fit text-ink-faint transition-colors hover:text-ink-soft"
+        >
+          <ChevronDown className="size-5 animate-bounce" />
+        </a>
       </section>
 
-      {/* ---------------------------------------------------------------- */}
-      {/* The memory video                                                  */}
-      {/* ---------------------------------------------------------------- */}
-      <section id="film" className="shell section-y scroll-mt-20">
-        <Reveal className="mx-auto mb-12 max-w-2xl text-center">
-          <p className="text-label mb-5">The memory video</p>
-          <h2 className="text-[clamp(1.75rem,3.6vw,2.6rem)]">
-            The world as it was, and as the brain recalled it.
-          </h2>
-          <p className="mt-6 text-[0.98rem] leading-relaxed text-ink-muted">
-            A person playing a game with a headset on. Left is what happened. Right is
-            what their EEG alone recovered — no event log, decoded every 250&nbsp;ms.
-          </p>
-        </Reveal>
+      {/* Everything below the fold sits on a surface. The vista is fixed, so
+          without this the cards and tables would scroll over open sky. */}
+      <div className="content-surface">
+        {/* ---------------------------------------------------------------- */}
+        {/* The memory video                                                  */}
+        {/* ---------------------------------------------------------------- */}
+        <section id="film" className="shell section-y scroll-mt-20">
+          <Reveal className="mx-auto mb-12 max-w-2xl text-center">
+            <p className="text-label mb-5">The memory video</p>
+            <h2 className="text-[clamp(1.75rem,3.6vw,2.6rem)]">
+              The world as it was, and as the brain recalled it.
+            </h2>
+            <p className="mt-6 text-[0.98rem] leading-relaxed text-ink-muted">
+              A person playing a game with a headset on. Left is what happened. Right is
+              what their EEG alone recovered — no event log, decoded every 250&nbsp;ms.
+            </p>
+          </Reveal>
 
-        <Reveal>
-          <MemoryFilm />
-        </Reveal>
-      </section>
+          <Reveal>
+            <MemoryFilm />
+          </Reveal>
+        </section>
 
-      {/* ---------------------------------------------------------------- */}
-      {/* Results                                                           */}
-      {/* ---------------------------------------------------------------- */}
-      <section className="shell section-y">
-        <Reveal className="mx-auto mb-12 max-w-2xl text-center">
-          <p className="text-label mb-5">Measured</p>
-          <h2 className="text-[clamp(1.75rem,3.6vw,2.6rem)]">
-            Results on people the model never saw.
-          </h2>
-        </Reveal>
+        {/* ---------------------------------------------------------------- */}
+        {/* Results                                                           */}
+        {/* ---------------------------------------------------------------- */}
+        <section className="shell section-y">
+          <Reveal className="mx-auto mb-12 max-w-2xl text-center">
+            <p className="text-label mb-5">Measured</p>
+            <h2 className="text-[clamp(1.75rem,3.6vw,2.6rem)]">
+              Results on people the model never saw.
+            </h2>
+          </Reveal>
 
-        <Reveal className="card-grid grid-cols-2 lg:grid-cols-4">
-          {RESULTS.map((result) => (
-            <div
-              key={result.label}
-              className="glass rounded-panel flex flex-col justify-between p-6 text-center"
-            >
-              <p className="font-display text-[2rem] leading-none text-ink">
-                {result.value}
-              </p>
-              <p className="mt-4 text-[0.82rem] leading-snug text-ink-soft">
-                {result.label}
-              </p>
-              <p className="mt-1.5 text-[0.72rem] text-ink-faint">{result.note}</p>
+          <Reveal className="card-grid grid-cols-2 lg:grid-cols-4">
+            {RESULTS.map((result) => (
+              <div
+                key={result.label}
+                className="glass rounded-panel flex flex-col justify-between p-6 text-center"
+              >
+                <p className="font-display text-[2rem] leading-none text-ink">
+                  {result.value}
+                </p>
+                <p className="mt-4 text-[0.82rem] leading-snug text-ink-soft">
+                  {result.label}
+                </p>
+                <p className="mt-1.5 text-[0.72rem] text-ink-faint">{result.note}</p>
+              </div>
+            ))}
+          </Reveal>
+        </section>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* Pipeline                                                          */}
+        {/* ---------------------------------------------------------------- */}
+        <section className="shell section-y">
+          <Reveal className="mx-auto mb-12 max-w-2xl text-center">
+            <p className="text-label mb-5">The engine</p>
+            <h2 className="text-[clamp(1.75rem,3.6vw,2.6rem)]">
+              Ten stages, signal to scored replay.
+            </h2>
+          </Reveal>
+
+          <Reveal className="card-grid grid-cols-2 md:grid-cols-5">
+            {PIPELINE_STAGES.map((stage, index) => (
+              <div key={stage.id} className="glass rounded-card flex flex-col p-5">
+                <span className="text-readout mb-3 text-[0.65rem] text-neural-300">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <p className="text-[0.86rem] leading-snug text-ink">{stage.label}</p>
+                <p className="mt-2 text-[0.72rem] leading-relaxed text-ink-faint">
+                  {stage.summary}
+                </p>
+              </div>
+            ))}
+          </Reveal>
+        </section>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* Principles                                                        */}
+        {/* ---------------------------------------------------------------- */}
+        <section className="shell section-y">
+          <Reveal className="card-grid md:grid-cols-3">
+            {PRINCIPLES.map((principle) => (
+              <div key={principle.title} className="glass rounded-panel p-7">
+                <h3 className="text-[1.02rem]">{principle.title}</h3>
+                <p className="mt-3 text-[0.86rem] leading-relaxed text-ink-muted">
+                  {principle.body}
+                </p>
+              </div>
+            ))}
+          </Reveal>
+        </section>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* Close                                                             */}
+        {/* ---------------------------------------------------------------- */}
+        <section className="shell pb-28 text-center">
+          <Reveal>
+            <h2 className="mx-auto max-w-xl text-[clamp(1.6rem,3.2vw,2.3rem)]">
+              Every number here has a control behind it.
+            </h2>
+            <div className="mt-9 flex justify-center">
+              <Link
+                to="/real"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-ink px-6 text-[0.9rem] font-medium whitespace-nowrap text-abyss transition-opacity hover:opacity-90"
+              >
+                Open the reconstructions
+                <ArrowRight className="size-3.5" />
+              </Link>
             </div>
-          ))}
-        </Reveal>
-      </section>
-
-      {/* ---------------------------------------------------------------- */}
-      {/* Pipeline                                                          */}
-      {/* ---------------------------------------------------------------- */}
-      <section className="shell section-y">
-        <Reveal className="mx-auto mb-12 max-w-2xl text-center">
-          <p className="text-label mb-5">The engine</p>
-          <h2 className="text-[clamp(1.75rem,3.6vw,2.6rem)]">
-            Ten stages, signal to scored replay.
-          </h2>
-        </Reveal>
-
-        <Reveal className="card-grid grid-cols-2 md:grid-cols-5">
-          {PIPELINE_STAGES.map((stage, index) => (
-            <div
-              key={stage.id}
-              className="glass rounded-card flex flex-col p-5"
-            >
-              <span className="text-readout mb-3 text-[0.65rem] text-neural-300">
-                {String(index + 1).padStart(2, '0')}
-              </span>
-              <p className="text-[0.86rem] leading-snug text-ink">{stage.label}</p>
-              <p className="mt-2 text-[0.72rem] leading-relaxed text-ink-faint">
-                {stage.summary}
-              </p>
-            </div>
-          ))}
-        </Reveal>
-      </section>
-
-      {/* ---------------------------------------------------------------- */}
-      {/* Principles                                                        */}
-      {/* ---------------------------------------------------------------- */}
-      <section className="shell section-y">
-        <Reveal className="card-grid md:grid-cols-3">
-          {PRINCIPLES.map((principle) => (
-            <div key={principle.title} className="glass rounded-panel p-7">
-              <h3 className="text-[1.02rem]">{principle.title}</h3>
-              <p className="mt-3 text-[0.86rem] leading-relaxed text-ink-muted">
-                {principle.body}
-              </p>
-            </div>
-          ))}
-        </Reveal>
-      </section>
-
-      {/* ---------------------------------------------------------------- */}
-      {/* Close                                                             */}
-      {/* ---------------------------------------------------------------- */}
-      <section className="shell pb-28 text-center">
-        <Reveal>
-          <h2 className="mx-auto max-w-xl text-[clamp(1.6rem,3.2vw,2.3rem)]">
-            Every number here has a control behind it.
-          </h2>
-          <div className="mt-9 flex justify-center">
-            <Link
-              to="/real"
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-ink px-6 text-[0.9rem] font-medium whitespace-nowrap text-abyss transition-opacity hover:opacity-90"
-            >
-              Open the reconstructions
-              <ArrowRight className="size-3.5" />
-            </Link>
-          </div>
-          <p className="mx-auto mt-12 max-w-lg text-[0.72rem] leading-relaxed text-ink-faint">
-            A research prototype. Reconstructions are inferences from neural signal, not
-            recordings of experience.
-          </p>
-        </Reveal>
-      </section>
+            <p className="mx-auto mt-12 max-w-lg text-[0.72rem] leading-relaxed text-ink-faint">
+              A research prototype. Reconstructions are inferences from neural signal, not
+              recordings of experience.
+            </p>
+          </Reveal>
+        </section>
+      </div>
     </motion.main>
   )
 }

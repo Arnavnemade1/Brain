@@ -363,7 +363,10 @@
   align-items: stretch;
 }
 
-/* The looping background sits behind everything, heavily veiled. */
+/* The looping vista sits behind everything. It is composed and graded to be
+   a backdrop already — dark sky up top where the headline lands, light only
+   at the horizon — so it runs at full opacity and the veil only has to
+   protect the nav and the fold. */
 @utility backdrop-video {
   position: fixed;
   inset: 0;
@@ -371,17 +374,41 @@
   height: 100%;
   object-fit: cover;
   z-index: -2;
-  /* The source loop is deliberately dark (mean luminance ~15/255), so it
-     needs high opacity to register at all; the veil below does the work of
-     keeping type legible. */
-  opacity: 0.9;
 }
 
+/* Landing veil: a scrim under the nav, a light overall knock-down, and a
+   fade into the page surface at the bottom of the fold. */
 @utility backdrop-veil {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background:
-    radial-gradient(ellipse 100% 70% at 50% 40%, transparent, color-mix(in oklab, var(--color-abyss) 82%, transparent) 85%),
-    linear-gradient(180deg, color-mix(in oklab, var(--color-abyss) 30%, transparent), color-mix(in oklab, var(--color-abyss) 72%, transparent));
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-abyss) 86%, transparent) 0%,
+    color-mix(in oklab, var(--color-abyss) 24%, transparent) 14%,
+    color-mix(in oklab, var(--color-abyss) 14%, transparent) 50%,
+    color-mix(in oklab, var(--color-abyss) 52%, transparent) 86%,
+    color-mix(in oklab, var(--color-abyss) 82%, transparent) 100%
+  );
+}
+
+/* App routes keep a trace of the vista at the edges but are otherwise solid:
+   dense readouts and tables have no business competing with a mountain. */
+@utility backdrop-veil-dim {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: color-mix(in oklab, var(--color-abyss) 86%, transparent);
+}
+
+/* Everything on the landing page below the fold. The hero dissolves into it
+   over the first few rem rather than meeting a hard edge. */
+@utility content-surface {
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    transparent 0,
+    color-mix(in oklab, var(--color-abyss) 93%, transparent) 7rem,
+    color-mix(in oklab, var(--color-abyss) 93%, transparent) 100%
+  );
 }
