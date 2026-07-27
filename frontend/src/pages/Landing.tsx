@@ -152,6 +152,38 @@ export default function Landing() {
         </section>
 
         {/* ---------------------------------------------------------------- */}
+        {/* Physical action                                                   */}
+        {/* ---------------------------------------------------------------- */}
+        <section id="action" className="shell section-y scroll-mt-20">
+          <Reveal className="mx-auto mb-12 max-w-2xl text-center">
+            <p className="text-label mb-5">Physical action</p>
+            <h2 className="text-[clamp(1.75rem,3.6vw,2.6rem)]">
+              Not what they saw. What they did.
+            </h2>
+            <p className="mt-6 text-[0.98rem] leading-relaxed text-ink-muted">
+              Someone opening and closing their fists and feet while EEG records. Left is
+              the action they performed, right is the action recovered from their motor
+              cortex alone — in real time, decoded every 250&nbsp;ms.
+            </p>
+          </Reveal>
+
+          <Reveal>
+            <MemoryFilm
+              src="/motor-video.mp4"
+              poster="/motor-video-poster.png"
+              label="A figure showing the limb movement recovered from EEG, beside the movement actually performed"
+              meta="S002 · 75 s · real time · loops"
+              stats={[
+                ['Moving vs still', '72.6% · chance 50%'],
+                ['Fists vs feet', '74.8% · chance 50%'],
+                ['Which fist', '60.6% · chance 50%'],
+              ]}
+              note="How well a distinction decodes tracks how far apart the body parts sit on the cortex. Hands versus feet is easy; which hand is barely better than a coin. Across 14 subjects the exact action is 30% against 20% chance, with a wide spread."
+            />
+          </Reveal>
+        </section>
+
+        {/* ---------------------------------------------------------------- */}
         {/* Results                                                           */}
         {/* ---------------------------------------------------------------- */}
         <section className="shell section-y">
