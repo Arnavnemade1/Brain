@@ -60,18 +60,24 @@ is the action recovered from motor cortex alone, in real time.
 
 ![physical action](docs/motor_video_frame.png)
 
-| 14 subjects, leave-one-run-out, balanced | Result | Chance |
+| 20 subjects, leave-one-run-out, balanced | Result | Chance |
 | --- | --- | --- |
-| **Moving vs still** | **72.6%** | 50% |
-| **Fists vs feet** | **74.8%** | 50% |
-| Left vs right fist | 60.6% | 50% |
-| Exact action, five ways | 30.0% | 20% |
+| **Moving vs still** | **76.3%** | 50% |
+| **Fists vs feet** | **75.5%** | 50% |
+| Left vs right fist | 62.0% | 50% |
+| Exact action, five ways | 36.7% | 20% |
 
 **The gradient is the finding.** How well a distinction decodes tracks how far
 apart the body parts sit on the cortex: hands versus feet is easy, which hand
-is barely better than a coin. Shuffled labels score 18.5%. Read the spread —
-per-subject exact accuracy ranges 19-46%, and some people sit at chance
-throughout. Full write-up: [`backend/MOTOR.md`](backend/MOTOR.md).
+is barely better than a coin. Shuffled labels score 19.6%. Read the spread —
+per-subject exact accuracy ranges 24-60%, and some people sit near chance
+throughout.
+
+**Position beats channel count.** Four electrodes over motor cortex decode
+better (28.7%) than eight frontal ones (24.4%); a Muse layout scores 22.3%
+against 20% chance, because it has no sensor near the sensorimotor strip.
+Full write-up, including the three approaches that were tried and rejected:
+[`backend/MOTOR.md`](backend/MOTOR.md).
 
 ---
 

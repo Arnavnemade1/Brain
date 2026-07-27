@@ -5,7 +5,7 @@ what they were *doing* — and it is the question scalp EEG is best equipped to
 answer.
 
 **Dataset.** PhysioNet EEG Motor Movement/Imagery Database (eegmmidb), Schalk
-et al. 2004. 64-channel BCI2000 at 160 Hz. Fourteen subjects here, recorded
+et al. 2004. 64-channel BCI2000 at 160 Hz. Twenty subjects here, recorded
 while they physically opened and closed their fists and feet on cue.
 
 Only the **executed movement** runs are used. The database also contains
@@ -17,8 +17,8 @@ Reproduce:
 
 ```bash
 cd backend
-.venv/bin/python -m tools.fetch_motor --subjects 14        # ~210 MB
-.venv/bin/python -m tools.decode_motor --subjects 14       # the tables below
+.venv/bin/python -m tools.fetch_motor --subjects 20        # ~300 MB
+.venv/bin/python -m tools.decode_motor --subjects 20       # the tables below
 .venv/bin/python -m tools.render_motor_video --subject S002
 ```
 
@@ -41,25 +41,25 @@ is what made the object work hard.
 
 ## Results
 
-Fourteen subjects, leave-one-run-out: the model is trained on a person's other
+Twenty subjects, leave-one-run-out: the model is trained on a person's other
 runs and never on the one it decodes. Every figure is **balanced** across
 actions — rest is 54% of every recording, so a decoder answering "rest" and
 nothing else would score 54% raw.
 
-| Per 1-second window | Real | Shuffled | Chance | Range |
+| Per window | Real | Shuffled | Chance | Range |
 | --- | --- | --- | --- | --- |
-| Exact action, five ways | **30.0%** | 18.5% | 20% | 19-46% |
-| Right limbs, action may be wrong | **53.6%** | 24.0% | — | 38-83% |
-| Right about moving at all | **66.7%** | 30.3% | — | 54-86% |
+| Exact action, five ways | **36.7%** | 19.6% | 20% | 24-60% |
+| Right limbs, action may be wrong | **58.4%** | 21.3% | — | 42-83% |
+| Right about moving at all | **72.2%** | 23.0% | — | 57-90% |
 
 Broken into the questions that are actually separable:
 
 | Sub-question | Real | Chance | Range |
 | --- | --- | --- | --- |
-| Moving vs rest | **72.6%** | 50% | 63-87% |
-| Fists vs feet | **74.8%** | 50% | 55-99% |
-| Left vs right fist | **60.6%** | 50% | 52-79% |
-| Which of four limbs | 27.0% | 25% | 8-48% |
+| Moving vs rest | **76.3%** | 50% | 65-91% |
+| Fists vs feet | **75.5%** | 50% | 58-100% |
+| Left vs right fist | **62.0%** | 50% | 48-82% |
+| Which of four limbs | **37.1%** | 25% | 22-71% |
 
 **The gradient is the finding.** How well a distinction decodes tracks how far
 apart the body parts sit on the cortex. Hands versus feet — opposite ends of
@@ -73,15 +73,15 @@ Scoring only exact matches hides that structure, the same way it did for the
 object reconstruction. So errors are graded: answering *both fists* when the
 truth was *right fist* means the decoder saw hand movement and could not
 lateralise it, which is a different quality of error from answering *both
-feet*. That is the gap between the 30.0% exact and the 53.6% right-limbs row.
+feet*. That is the gap between the 36.7% exact and the 58.4% right-limbs row.
 
 ---
 
 ## Read the spread, not the mean
 
 The range column is not noise. Some people's sensorimotor rhythms are simply
-much more readable than others': S004 reaches 44.6% exact while S011 sits at
-18.5%, below the 20% chance line. This split is well documented and it is why
+much more readable than others': the best subject reaches 60% exact while the
+weakest sits at 24%, barely above the 20% chance line. This split is well documented and it is why
 a single-subject number from this dataset means very little on its own.
 
 **The shipped video is S002, one of the stronger subjects**, and every frame
@@ -89,23 +89,96 @@ of it says so along with the group mean and range.
 
 ---
 
-## Two things that did not work
+## What was tried
 
-**Common spatial patterns.** The standard front end for this kind of decoding,
-implemented and fitted per fold on training data only, one-versus-rest. It came
-out +0.6 points on moving-versus-rest, +1.5 on left-versus-right fist, and
-**-3.9** on fists-versus-feet, and 2.5 points worse on the five-class problem.
-It did not earn its complexity here and the module was deleted; features are
-the plain per-channel log band powers, which have the side benefit of staying
-individually nameable.
+Five ideas, measured the same way each time — leave-one-run-out, balanced
+accuracy, the same subjects. Two worked.
 
-**Constraining the decoder to the actions a run could contain.** Each run only
-ever contains two of the four movements, so restricting the posterior to those
-lifts raw accuracy from 32.2% to 41.2%. But chance rises from 20% to 33% at the
-same time, so the effect size *falls* — 1.25x chance against 1.61x. The
-constraint mostly hands the model the easy fists-versus-feet call. The
-unconstrained decoder is the honest one, and the confusions it makes are
-informative rather than embarrassing.
+| Change | Effect on exact action |
+| --- | --- |
+| **Normalise each recording against itself** | **+6.4** |
+| **2-second windows instead of 1-second** | **+2.7** |
+| Common spatial patterns | -2.5 |
+| Riemannian tangent-space features | +0.1 |
+| Viterbi decoding with a transition prior | -0.8 |
+
+Together the two that worked took exact action from 32.2% to **41.3%** on a
+fixed set of eight subjects. The tables above are the twenty-subject figures
+under the improved pipeline.
+
+### Normalising each recording against itself
+
+The largest single change, and an unglamorous one. Band power drifts between
+recordings with electrode impedance and with time, and that drift is larger
+than the difference between two actions. Training on one run and decoding
+another forces the model across that gap unless the features are first
+expressed relative to their own session.
+
+**No labels are involved** — only the distribution of the features — which is
+why applying it to a held-out run is not leakage, and why a headset can do
+exactly this with its own recording.
+
+Two variants, and the difference matters for anything real-time:
+
+| | Effect |
+| --- | --- |
+| Whole session's statistics (offline reconstruction) | +6.4 |
+| Only windows up to the current moment (live) | +2.6 |
+
+The offline number is the one quoted above, because a memory is reconstructed
+after it happens. A live system gets the smaller figure.
+
+### What did not work
+
+**Common spatial patterns**, the standard front end for this kind of decoding,
+fitted per fold on training data only: +0.6 on moving-versus-rest, +1.5 on
+left-versus-right fist, **-3.9** on fists-versus-feet, and 2.5 worse five-way.
+The module was deleted.
+
+**Riemannian tangent-space features**, the natural thing to try after CSP
+failed: 30.3% against 30.2% for plain band power on the same montage. A wash,
+for roughly sixty times the compute. Kept in the tree as `app/motor/riemann.py`
+since it is correct and the measurement is the point.
+
+**Viterbi decoding** with a tuned self-transition prior, on the theory that
+four-second actions should not flicker: 34.1% at best against 34.9% for plain
+argmax. Overlapping two-second windows already carry the temporal structure,
+so an explicit transition model only adds lag.
+
+**Restricting the decoder to the actions a run can contain.** Raw accuracy
+rises from 32.2% to 41.2%, but chance rises from 20% to 33% with it, so the
+effect size *falls* — 1.25x chance against 1.61x. The constraint mostly hands
+the model the easy fists-versus-feet call.
+
+---
+
+## How many electrodes, and where
+
+This is the question that matters before buying a headset, so it was measured
+rather than guessed. Six subjects, same pipeline, channels dropped from the
+montage:
+
+| Montage | Channels | Exact action |
+| --- | --- | --- |
+| Full cap | 64 | 40.5% |
+| Sensorimotor strip | 21 | 35.1% |
+| Central | 12 | 34.0% |
+| Central | 8 | 32.0% |
+| Central | 4 | 28.7% |
+| **Frontal only** | 8 | **24.4%** |
+| **Muse layout (AF7, AF8, TP9, TP10)** | 4 | **22.3%** |
+
+Chance is 20%.
+
+**Position matters far more than count.** Four electrodes over motor cortex
+(28.7%) beat eight frontal ones (24.4%) comfortably. A Muse, whose electrodes
+sit on the forehead and behind the ears, scores 22.3% — close enough to chance
+to call it nothing, because it has no sensor anywhere near the sensorimotor
+strip.
+
+Anything intended to read movement needs contacts at or around **C3, Cz and
+C4**. An eight-channel headset placed there retains about four fifths of what
+a 64-channel cap gets.
 
 ---
 

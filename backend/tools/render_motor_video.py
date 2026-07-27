@@ -70,6 +70,29 @@ ACTION_LIMBS: Dict[str, Tuple[str, ...]] = {
     "both feet": ("left leg", "right leg"),
 }
 
+LIMBS: Tuple[str, ...] = ("left arm", "right arm", "left leg", "right leg")
+
+#: Cycles per second the hands and feet open and close at. The task is
+#: self-paced; this is a nominal rate so the figure reads as *moving* rather
+#: than as a limb that has simply changed colour.
+MOVE_HZ = 1.2
+
+
+def limb_belief(posterior: np.ndarray) -> Dict[str, float]:
+    """Marginal probability that each limb is moving.
+
+    The decoder's answer is a distribution, and collapsing it to the argmax
+    throws away the most informative thing it produces. When the posterior is
+    split between left and right fist, both arms should glow at half — that is
+    a truthful picture of the evidence, where a single lit arm would be an
+    invention.
+    """
+    out = {name: 0.0 for name in LIMBS}
+    for index, action in enumerate(CLASSES):
+        for limb in ACTION_LIMBS[action]:
+            out[limb] += float(posterior[index])
+    return out
+
 PANEL_W = 420
 
 # Explicit vertical budget for a 620px frame. The first pass let the timeline
@@ -101,16 +124,25 @@ def _font(size: int):
     return ImageFont.load_default()
 
 
-def _draw_body(draw, cx: int, cy: int, action: str, tint) -> None:
-    """A figure with the moving limbs lit.
+def _draw_body(
+    draw,
+    cx: int,
+    cy: int,
+    tint,
+    belief: Dict[str, float],
+    phase: float,
+) -> None:
+    """A figure with each limb lit in proportion to how much it is moving.
 
     Drawn as if seen from behind, so the subject's left hand is on the
     viewer's left. The limbs are labelled anyway — left and right is exactly
     the thing this decoder is worst at, and a mirrored figure would make an
     honest error look like a labelling bug.
+
+    ``belief`` is 1.0 for a limb that is definitely moving and a fraction for
+    one the decoder is unsure about, so uncertainty is rendered rather than
+    resolved. ``phase`` drives the open/close oscillation.
     """
-    active = ACTION_LIMBS[action]
-    lit = tint
     dim = IDLE
 
     head_r = 20
@@ -133,14 +165,24 @@ def _draw_body(draw, cx: int, cy: int, action: str, tint) -> None:
     }
 
     for name, points in limbs.items():
-        on = name in active
-        draw.line(points, fill=lit if on else dim, width=9 if on else 5, joint="curve")
-        # A filled hand or foot at the end, which is what actually moves.
-        end = points[-1]
-        radius = 11 if on else 7
+        amount = float(np.clip(belief.get(name, 0.0), 0.0, 1.0))
+        colour = tuple(
+            int(dim[c] + (tint[c] - dim[c]) * amount) for c in range(3)
+        )
+        width = int(round(5 + 4 * amount))
+
+        # The hand or foot opens and closes while the limb is active, scaled
+        # by how strongly the decoder believes it. A limb that merely changes
+        # colour does not read as a limb that is moving.
+        swing = amount * 5.0 * np.sin(2 * np.pi * phase)
+        moved = list(points[:-1]) + [(points[-1][0], points[-1][1] + swing)]
+
+        draw.line(moved, fill=colour, width=width, joint="curve")
+        end = moved[-1]
+        radius = 7 + 5 * amount + amount * 2.5 * np.cos(2 * np.pi * phase)
         draw.ellipse(
             [end[0] - radius, end[1] - radius, end[0] + radius, end[1] + radius],
-            fill=lit if on else dim,
+            fill=colour,
         )
 
     small = _font(12)
@@ -150,6 +192,7 @@ def _draw_body(draw, cx: int, cy: int, action: str, tint) -> None:
 
 def _draw_frame(
     position: int,
+    phase: float,
     actual: np.ndarray,
     predicted: np.ndarray,
     probability: np.ndarray,
@@ -181,8 +224,18 @@ def _draw_frame(
     draw.text((32, TOP - 22), "WHAT THEY DID", fill=TRUTH_TINT, font=small)
     draw.text((WIDTH - 32 - PANEL_W, TOP - 22), "RECONSTRUCTED FROM EEG", fill=CORRECT if hit else INK_FAINT, font=small)
 
-    _draw_body(draw, left_x, TOP + FIGURE_H // 2, truth, ACTION_COLOUR[truth])
-    _draw_body(draw, right_x, TOP + FIGURE_H // 2, guess, ACTION_COLOUR[guess])
+    truth_belief = {limb: 1.0 for limb in ACTION_LIMBS[truth]}
+    _draw_body(
+        draw, left_x, TOP + FIGURE_H // 2, ACTION_COLOUR[truth], truth_belief, phase
+    )
+    _draw_body(
+        draw,
+        right_x,
+        TOP + FIGURE_H // 2,
+        ACTION_COLOUR[guess],
+        limb_belief(probability[position]),
+        phase,
+    )
 
     draw.text((32, Y_ACTION), truth, fill=INK, font=medium)
     draw.text(
@@ -204,7 +257,12 @@ def _draw_frame(
     )
 
     # --- posterior ----------------------------------------------------------
-    draw.text((32, Y_BARS_TITLE), "WHAT THE DECODER BELIEVES", fill=INK_FAINT, font=small)
+    draw.text(
+        (32, Y_BARS_TITLE),
+        "WHAT THE DECODER BELIEVES   the right figure lights each limb by these odds, not by the winner",
+        fill=INK_FAINT,
+        font=small,
+    )
     bar_w = 168
     for index, name in enumerate(CLASSES):
         x = 32 + index * (bar_w + 42)
@@ -305,7 +363,7 @@ def main() -> int:
 
     # Stated on every frame: motor decoding varies enormously between people,
     # and showing a strong subject without the spread would misrepresent it.
-    group = "Across 14 subjects: exact 30%, range 19-46%. This is a strong one."
+    group = "Across 20 subjects: exact 37%, range 24-60%. This is a strong one."
 
     fonts = (_font(13), _font(17))
     out = Path(args.out) if args.out else OUT_DIR / f"{subject}_motor_video.mp4"
@@ -328,12 +386,16 @@ def main() -> int:
         centre = prediction.centre[order]
 
         for position in range(order.size):
-            frame = _draw_frame(
-                position, actual, predicted, probability, centre,
-                fonts, metrics, subject, group,
-            )
-            for _ in range(FRAMES_PER_WINDOW):
-                writer.append_data(frame)
+            # Redrawn every frame rather than once per window, so the limbs
+            # actually move instead of stepping between still poses.
+            for tick in range(FRAMES_PER_WINDOW):
+                elapsed = (position * FRAMES_PER_WINDOW + tick) / FPS
+                writer.append_data(
+                    _draw_frame(
+                        position, elapsed * MOVE_HZ, actual, predicted, probability,
+                        centre, fonts, metrics, subject, group,
+                    )
+                )
     finally:
         writer.close()
 

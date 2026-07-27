@@ -174,11 +174,11 @@ export default function Landing() {
               label="A figure showing the limb movement recovered from EEG, beside the movement actually performed"
               meta="S002 · 75 s · real time · loops"
               stats={[
-                ['Moving vs still', '72.6% · chance 50%'],
-                ['Fists vs feet', '74.8% · chance 50%'],
-                ['Which fist', '60.6% · chance 50%'],
+                ['Moving vs still', '76.3% · chance 50%'],
+                ['Fists vs feet', '75.5% · chance 50%'],
+                ['Which fist', '62.0% · chance 50%'],
               ]}
-              note="How well a distinction decodes tracks how far apart the body parts sit on the cortex. Hands versus feet is easy; which hand is barely better than a coin. Across 14 subjects the exact action is 30% against 20% chance, with a wide spread."
+              note="The right figure lights each limb by the decoder's odds, not by its single best guess — so uncertainty is shown rather than resolved. Across 20 subjects the exact action is 36.7% against 20% chance, ranging 24-60% between people."
             />
           </Reveal>
         </section>

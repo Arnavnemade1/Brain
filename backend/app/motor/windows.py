@@ -52,9 +52,12 @@ RUN_TASKS: Dict[int, Tuple[str, str]] = {
     13: ("both fists", "both feet"),
 }
 
-#: Analysis window and hop, in seconds. One second is long enough to estimate
-#: band power stably and short enough to follow a four-second action.
-WINDOW = 1.0
+#: Analysis window and hop, in seconds. Two seconds measured better than one
+#: (+2.7 points balanced) and no worse than three: band power is estimated
+#: from twice the data while still fitting inside a four-second action. The
+#: hop stays at a quarter second, so the reconstruction's time resolution is
+#: unchanged.
+WINDOW = 2.0
 STEP = 0.25
 
 #: Rhythms read, in Hz. Split rather than pooled so the decoder can weight mu
@@ -62,6 +65,15 @@ STEP = 0.25
 #: bands rather than three keeps the per-window covariances (64x64 each) to a
 #: size that fits in memory for a cross-subject fit.
 BANDS: Tuple[Tuple[float, float], ...] = ((8.0, 13.0), (13.0, 30.0))
+
+#: The sensorimotor montage — the strip where movement-related rhythms live.
+#: Also close to what a real headset can place, which makes it the honest
+#: subset to quote when asking how few electrodes this needs.
+SENSORIMOTOR: Tuple[str, ...] = (
+    "Fc5", "Fc3", "Fc1", "Fcz", "Fc2", "Fc4", "Fc6",
+    "C5", "C3", "C1", "Cz", "C2", "C4", "C6",
+    "Cp5", "Cp3", "Cp1", "Cpz", "Cp2", "Cp4", "Cp6",
+)
 
 #: Skipped after a cue before a window counts as that action. Movement does
 #: not begin at the cue, and labelling the reaction time as movement teaches
