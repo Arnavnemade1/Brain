@@ -61,6 +61,12 @@ class Reconstruction:
     correct_animacy: Optional[bool]
     correct_category: Optional[bool]
     trials_used: int
+    #: How far the winning score stands above the candidate field, in standard
+    #: deviations. The softmax `probability` is not a usable confidence — at
+    #: the temperature that makes it readable it saturates near 1 even when
+    #: the answer is wrong — whereas this says how much the EEG actually
+    #: singled that candidate out.
+    top_z: float = 0.0
 
     @property
     def top(self) -> Candidate:
@@ -143,7 +149,13 @@ class RetrievalReconstructor:
         standardised = (x - self._mean) / self._scale
         pattern = self._unit(standardised.mean(axis=0))
 
-        scores = self._templates_unit @ pattern
+        # numpy's matmul on Apple's Accelerate BLAS raises spurious
+        # divide-by-zero/overflow/invalid flags here even though both operands
+        # and the result are finite — verified bit-identical to an explicit
+        # float64 dot over the same inputs. Silenced narrowly at this one call
+        # so genuine numerical trouble anywhere else still surfaces.
+        with np.errstate(divide="ignore", over="ignore", invalid="ignore"):
+            scores = self._templates_unit @ pattern
 
         # Softmax over correlations gives a comparable confidence across the
         # candidate set. The temperature is small because correlations here
@@ -151,6 +163,9 @@ class RetrievalReconstructor:
         shifted = (scores - scores.max()) / max(temperature, 1e-6)
         probabilities = np.exp(shifted)
         probabilities /= probabilities.sum()
+
+        spread = float(scores.std())
+        top_z = float((scores.max() - scores.mean()) / spread) if spread > 1e-12 else 0.0
 
         order = np.argsort(-scores)
         catalogue = self.embeddings.catalogue
@@ -196,6 +211,7 @@ class RetrievalReconstructor:
             correct_animacy=correct_animacy,
             correct_category=correct_category,
             trials_used=trials_used,
+            top_z=top_z,
         )
 
     # ------------------------------------------------------------- rendering

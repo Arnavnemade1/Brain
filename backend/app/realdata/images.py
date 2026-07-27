@@ -3,7 +3,7 @@
 Two representations of each of the 200 objects:
 
 * a **semantic** label hierarchy parsed from the filename — animate/inanimate,
-  one of eight categories, one of 52 concepts;
+  one of ten categories, one of 50 concepts;
 * a **visual** embedding of hand-computed image statistics.
 
 The visual embedding is deliberately hand-computed rather than taken from a

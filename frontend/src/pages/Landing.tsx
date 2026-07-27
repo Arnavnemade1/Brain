@@ -104,7 +104,50 @@ export default function Landing() {
           </Reveal>
 
           <Reveal>
-            <MemoryFilm />
+            <MemoryFilm
+              src="/memory-video.mp4"
+              poster="/memory-video-poster.png"
+              label="Gameplay reconstructed from EEG, side by side with what actually happened"
+              meta="sub-005 · 60 s continuous · loops"
+              stats={[
+                ['Detection', '76.6% recall · 72.6% precision'],
+                ['Decoding rate', 'every 250 ms, no event log'],
+                ['Validation', 'leave-one-subject-out'],
+              ]}
+              note="The rhythm of the session — when things happened, the bursts and the lulls — is genuinely recovered. Which particular event occurred at each moment is not, and the right panel dims to show it."
+            />
+          </Reveal>
+        </section>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* Real-world imagery                                                */}
+        {/* ---------------------------------------------------------------- */}
+        <section id="reallife" className="shell section-y scroll-mt-20">
+          <Reveal className="mx-auto mb-12 max-w-2xl text-center">
+            <p className="text-label mb-5">Real life</p>
+            <h2 className="text-[clamp(1.75rem,3.6vw,2.6rem)]">
+              The same engine, on photographs of the real world.
+            </h2>
+            <p className="mt-6 text-[0.98rem] leading-relaxed text-ink-muted">
+              Someone viewing real-world objects while EEG records. Left is the photograph
+              on screen. The other two panels are what the system retrieved from brain
+              activity alone — from a single glimpse, and from eight.
+            </p>
+          </Reveal>
+
+          <Reveal>
+            <MemoryFilm
+              src="/reallife-video.mp4"
+              poster="/reallife-video-poster.png"
+              label="Real-world photographs retrieved from EEG, beside the image actually viewed"
+              meta="sub-01 · 200 candidates · loops"
+              stats={[
+                ['Same object in top 5', '42.4% · chance 10%'],
+                ['Exact photo in top 5', '20.1% · chance 2.5%'],
+                ['Validation', 'shuffled + strict time split'],
+              ]}
+              note="What comes back reliably is the kind of thing seen, not which one. Watch the ranked strip: when a hat was on screen the answer is often a hat — a different hat, outlined blue rather than green."
+            />
           </Reveal>
         </section>
 

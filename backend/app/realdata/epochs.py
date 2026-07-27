@@ -54,13 +54,17 @@ class EpochSet:
     channel_names: List[str]
     #: 1-based stimulus id, 1..200.
     stimulus: np.ndarray
+    #: Presentation onset in seconds from the start of the recording. Needed
+    #: to lay a reconstruction out on a real time axis rather than assuming a
+    #: uniform 5 Hz — the streams have breaks between blocks.
+    onset_s: np.ndarray
     #: Filename of the image shown on each trial.
     stimulus_name: List[str]
     #: animate / inanimate.
     level_a: List[str]
-    #: 8 categories (mammal, tools, …).
+    #: 10 categories (mammal, tools, …).
     level_b: List[str]
-    #: 52 concepts (monkey, jeans, …).
+    #: 50 concepts (monkey, jeans, …).
     level_c: List[str]
     subject: str
     sampling_rate: float
@@ -80,6 +84,7 @@ class EpochSet:
             times=self.times,
             channel_names=np.array(self.channel_names),
             stimulus=self.stimulus,
+            onset_s=self.onset_s,
             stimulus_name=np.array(self.stimulus_name),
             level_a=np.array(self.level_a),
             level_b=np.array(self.level_b),
@@ -96,6 +101,13 @@ class EpochSet:
             times=blob["times"],
             channel_names=[str(c) for c in blob["channel_names"]],
             stimulus=blob["stimulus"],
+            # Caches written before onsets were recorded fall back to the
+            # nominal 5 Hz spacing rather than failing to load.
+            onset_s=(
+                blob["onset_s"]
+                if "onset_s" in blob.files
+                else np.arange(blob["stimulus"].size, dtype=np.float64) * 0.2
+            ),
             stimulus_name=[str(s) for s in blob["stimulus_name"]],
             level_a=[str(s) for s in blob["level_a"]],
             level_b=[str(s) for s in blob["level_b"]],
@@ -164,6 +176,7 @@ def extract(
 
     kept: List[np.ndarray] = []
     stimulus: List[int] = []
+    onsets: List[float] = []
     names: List[str] = []
     a: List[str] = []
     b: List[str] = []
@@ -205,6 +218,7 @@ def extract(
 
         kept.append(epoch[:, ::decimation].astype(np.float32))
         stimulus.append(number)
+        onsets.append(onset / rate)
         names.append(name)
         a.append(row.get("levelA", ""))
         b.append(row.get("levelB", ""))
@@ -233,6 +247,7 @@ def extract(
         times=times,
         channel_names=channel_names,
         stimulus=np.array(stimulus, dtype=np.int16),
+        onset_s=np.array(onsets, dtype=np.float64),
         stimulus_name=names,
         level_a=a,
         level_b=b,
