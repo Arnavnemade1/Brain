@@ -91,16 +91,17 @@ of it says so along with the group mean and range.
 
 ## What was tried
 
-Five ideas, measured the same way each time — leave-one-run-out, balanced
+Six ideas, measured the same way each time — leave-one-run-out, balanced
 accuracy, the same subjects. Two worked.
 
 | Change | Effect on exact action |
 | --- | --- |
 | **Normalise each recording against itself** | **+6.4** |
 | **2-second windows instead of 1-second** | **+2.7** |
-| Common spatial patterns | -2.5 |
 | Riemannian tangent-space features | +0.1 |
 | Viterbi decoding with a transition prior | -0.8 |
+| Common spatial patterns | -2.5 |
+| A nonlinear classifier | -4.4 |
 
 Together the two that worked took exact action from 32.2% to **41.3%** on a
 fixed set of eight subjects. The tables above are the twenty-subject figures
@@ -139,6 +140,14 @@ The module was deleted.
 failed: 30.3% against 30.2% for plain band power on the same montage. A wash,
 for roughly sixty times the compute. Kept in the tree as `app/motor/riemann.py`
 since it is correct and the measurement is the point.
+
+**Nonlinear classifiers.** Shrinkage LDA 41.3%, L2 logistic regression 40.0%,
+gradient boosting 36.9%, RBF SVM 36.4%. Every nonlinear model did worse. With
+128 features against a couple of thousand windows the extra capacity buys
+overfitting, and the class structure in log band power is close enough to
+linear that there is little for a curved boundary to find. The linear model
+also keeps its weights attributable to a rhythm over a scalp location, which
+is worth something on its own.
 
 **Viterbi decoding** with a tuned self-transition prior, on the theory that
 four-second actions should not flicker: 34.1% at best against 34.9% for plain
