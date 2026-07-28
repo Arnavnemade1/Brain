@@ -53,6 +53,60 @@ strict time split does not collapse the result. Full write-up and controls:
 
 ---
 
+## An environment reconstructed from EEG
+
+Object identification is 7.6% exact — far too weak to build a world from. But
+identification is the wrong question. Regressed onto the **visual statistics**
+of what was on screen, EEG does much better:
+
+| Property | r | shuffled |
+| --- | --- | --- |
+| edge density | **0.69** | 0.07 |
+| mean red | 0.64 | −0.02 |
+| saturation | 0.64 | 0.05 |
+| luminance | 0.62 | −0.01 |
+| contrast | 0.58 | 0.01 |
+
+![environment from EEG](docs/environment_frame.png)
+
+Two landscapes: left graded from the photograph's true statistics, right from
+brain activity alone. Same terrain, same camera, same sun — **only appearance
+is decoded**, and a property must clear r = 0.35 held-out before it may move
+anything. Mean per-moment agreement **r = 0.38**.
+
+Scalp EEG carries *how a scene looked* far better than *what was in it*, which
+is why a landscape works where object reconstruction does not. Details:
+[`backend/ENVIRONMENT.md`](backend/ENVIRONMENT.md).
+
+---
+
+## A memory of place, from brain state
+
+A continuous recording of someone having an experience, rendered as terrain
+you travel through. Light, air, colour, ground and the *speed of travel* all
+follow the recording moment to moment.
+
+![memory of place](docs/memory_of_place_frame.png)
+
+The distinction that carries this: **band power is not a guess.** Every
+reconstruction above has an inference gap with an error bar on it — object
+identity 7.6%, visual properties r = 0.47–0.69, cross-subject emotion a
+documented failure. Alpha power over occipital cortex simply *is* alpha power
+over occipital cortex. Binding a landscape to it is a faithful rendering of
+the signal, not a claim about the world, which is why there is no accuracy
+figure here: nothing is being predicted.
+
+Channels marked *interpretation* on the frame are where a cognitive meaning is
+assumed on top of a measurement. Frontal asymmetry moves the least of
+anything, deliberately — it is the one reading this project already tested and
+found wanting.
+
+**Nobody in this dataset was on a mountain.** The terrain is a fixed prior; the
+place is not decoded, the state is. Details and what a real recording would
+need: [`backend/MEMORY_OF_PLACE.md`](backend/MEMORY_OF_PLACE.md).
+
+---
+
 ## What the body was doing
 
 Not what someone saw — what they **did**. Left is the action performed, right
