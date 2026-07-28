@@ -400,6 +400,172 @@ def _sky_colour(direction: np.ndarray, sky: Sky) -> np.ndarray:
     return colour
 
 
+@dataclass
+class GBuffer:
+    """Everything about a view that does not depend on how it is lit.
+
+    Marching rays into a heightfield costs a minute a frame; re-shading one is
+    a few numpy operations over the pixels that hit. Separating them is what
+    makes an animated sequence possible at all, and it draws an honest line
+    at the same time: geometry is fixed prior, and only appearance is allowed
+    to vary with what was decoded.
+    """
+
+    width: int
+    height: int
+    supersample: int
+    #: Ray direction per pixel, flattened.
+    direction: np.ndarray
+    #: Indices of pixels that hit ground.
+    index: np.ndarray
+    distance: np.ndarray
+    normal: np.ndarray
+    ground: np.ndarray
+    slope: np.ndarray
+    point: np.ndarray
+    #: Sun visibility at each hit, for the fixed sun direction.
+    shadow: np.ndarray
+    summit: float
+    sun: np.ndarray
+
+
+@dataclass
+class Grade:
+    """Per-frame appearance. Every field here may be driven by decoded EEG."""
+
+    #: Overall light level.
+    daylight: float = 1.0
+    #: Atmospheric density; higher washes distance toward the sky.
+    haze: float = 1.0
+    #: Water height in world units.
+    water_level: float = 0.0
+    #: Multiplies the final colour saturation.
+    saturation: float = 1.35
+    #: Warm/cool balance of the sunlight.
+    sun_tint: Tuple[float, float, float] = (1.0, 0.96, 0.88)
+    horizon: Tuple[float, float, float] = (0.62, 0.72, 0.84)
+    zenith: Tuple[float, float, float] = (0.26, 0.44, 0.72)
+    #: 0 keeps vegetation, 1 strips it back to bare rock.
+    barrenness: float = 0.0
+    #: Exposure, applied before the tone curve.
+    exposure: float = 1.42
+
+
+def geometry(
+    width: int,
+    height: int,
+    terrain: Terrain,
+    camera: Camera,
+    sky: Sky,
+    steps: int = 150,
+    far: float = 9000.0,
+    supersample: int = 1,
+    summit: Optional[float] = None,
+) -> GBuffer:
+    """The expensive pass: march, refine, and read surface properties."""
+    w, h = width * supersample, height * supersample
+    if summit is None:
+        summit = terrain.summit()
+
+    direction = _rays(w, h, camera)
+    origin = np.asarray(camera.position, np.float32)
+    sun = _normalise(sky.sun)
+
+    distance, hit = _march(origin, direction, terrain, far, steps)
+    distance = _refine(origin, direction, terrain, distance, hit)
+
+    idx = np.nonzero(hit)[0]
+    point = origin[None, :] + direction[idx] * distance[idx][:, None]
+
+    # Normal from the height gradient. The sample spacing grows with distance
+    # so far normals are not read from noise finer than a pixel, which sparkles.
+    epsilon = np.maximum(distance[idx] * 0.0016, 0.7)
+    hx = terrain.height(point[:, 0] + epsilon, point[:, 2])
+    hx0 = terrain.height(point[:, 0] - epsilon, point[:, 2])
+    hz = terrain.height(point[:, 0], point[:, 2] + epsilon)
+    hz0 = terrain.height(point[:, 0], point[:, 2] - epsilon)
+
+    normal = np.stack([-(hx - hx0), 2.0 * epsilon, -(hz - hz0)], axis=1).astype(np.float32)
+    normal /= np.linalg.norm(normal, axis=1, keepdims=True)
+
+    return GBuffer(
+        width=width,
+        height=height,
+        supersample=supersample,
+        direction=direction,
+        index=idx,
+        distance=distance[idx],
+        normal=normal,
+        ground=terrain.height(point[:, 0], point[:, 2]),
+        slope=1.0 - normal[:, 1],
+        point=point,
+        shadow=_shadow(point, sun, terrain),
+        summit=float(summit),
+        sun=sun,
+    )
+
+
+def shade(buffer: GBuffer, grade: Grade) -> np.ndarray:
+    """The cheap pass: light a prepared view under one appearance."""
+    sky = Sky(
+        sun=tuple(buffer.sun),
+        zenith=grade.zenith,
+        horizon=grade.horizon,
+        sun_tint=grade.sun_tint,
+        haze=grade.haze,
+        daylight=grade.daylight,
+    )
+
+    image = _sky_colour(buffer.direction, sky)
+
+    if buffer.index.size:
+        colour = _materials(
+            buffer.ground,
+            buffer.slope,
+            buffer.summit,
+            grade.water_level,
+            buffer.point[:, 0],
+            buffer.point[:, 2],
+        )
+
+        if grade.barrenness > 0:
+            # Toward bare rock. A single grey would flatten the surface, so
+            # this desaturates toward each pixel's own luminance instead.
+            luma = (colour @ np.array([0.2126, 0.7152, 0.0722], np.float32))[:, None]
+            colour = colour + (luma * 1.04 - colour) * float(grade.barrenness)
+
+        lambert = np.clip(buffer.normal @ buffer.sun, 0.0, 1.0)[:, None]
+        ambient = np.asarray(sky.horizon, np.float32)[None, :] * 0.22
+        sun_light = np.asarray(sky.sun_tint, np.float32)[None, :] * 1.75 * sky.daylight
+        lit = colour * (ambient + sun_light * lambert * buffer.shadow[:, None])
+
+        depth = np.clip((grade.water_level - buffer.ground) / 26.0, 0, 1)[:, None]
+        if depth.max() > 0:
+            surface = np.asarray(Water().colour, np.float32)[None, :]
+            sheen = np.asarray(sky.horizon, np.float32)[None, :] * 0.30
+            lit = lit * (1 - depth) + (surface + sheen) * depth
+
+        fog = 1.0 - np.exp(-(buffer.distance[:, None] / 3800.0) ** 1.15 * sky.haze)
+        lit = lit * (1 - fog) + _sky_colour(buffer.direction[buffer.index], sky) * fog
+
+        image[buffer.index] = lit
+
+    w = buffer.width * buffer.supersample
+    h = buffer.height * buffer.supersample
+    image = image.reshape(h, w, 3)
+    if buffer.supersample > 1:
+        image = image.reshape(
+            buffer.height, buffer.supersample, buffer.width, buffer.supersample, 3
+        ).mean(axis=(1, 3))
+
+    image = image / (image + 1.05)
+    image = np.clip(image * grade.exposure, 0.0, 1.0) ** (1.0 / 2.2)
+
+    luma = (image @ np.array([0.2126, 0.7152, 0.0722], np.float32))[..., None]
+    image = np.clip(luma + (image - luma) * grade.saturation, 0.0, 1.0)
+    return image.astype(np.float32)
+
+
 def render(
     width: int,
     height: int,
@@ -413,83 +579,20 @@ def render(
     summit: Optional[float] = None,
 ) -> np.ndarray:
     """Render one frame as float RGB in 0-1."""
-    w, h = width * supersample, height * supersample
-
-    if summit is None:
-        summit = terrain.summit()
-
-    direction = _rays(w, h, camera)
-    origin = np.asarray(camera.position, np.float32)
-    sun = _normalise(sky.sun)
-
-    distance, hit = _march(origin, direction, terrain, far, steps)
-    distance = _refine(origin, direction, terrain, distance, hit)
-
-    image = _sky_colour(direction, sky)
-
-    if hit.any():
-        idx = np.nonzero(hit)[0]
-        point = origin[None, :] + direction[idx] * distance[idx][:, None]
-
-        # Normal from the height gradient. The sample spacing grows with
-        # distance so that far-away normals are not read from noise finer than
-        # a pixel, which would sparkle.
-        epsilon = np.maximum(distance[idx] * 0.0016, 0.7)
-        hx = terrain.height(point[:, 0] + epsilon, point[:, 2])
-        hx0 = terrain.height(point[:, 0] - epsilon, point[:, 2])
-        hz = terrain.height(point[:, 0], point[:, 2] + epsilon)
-        hz0 = terrain.height(point[:, 0], point[:, 2] - epsilon)
-
-        normal = np.stack(
-            [-(hx - hx0), 2.0 * epsilon, -(hz - hz0)], axis=1
-        ).astype(np.float32)
-        normal /= np.linalg.norm(normal, axis=1, keepdims=True)
-
-        slope = 1.0 - normal[:, 1]
-        ground = terrain.height(point[:, 0], point[:, 2])
-        colour = _materials(
-            ground, slope, summit, water.level, point[:, 0], point[:, 2]
-        )
-
-        lambert = np.clip(normal @ sun, 0.0, 1.0)[:, None]
-        shade = _shadow(point, sun, terrain)[:, None]
-        # Sky light from above, which is what keeps shadowed faces from going
-        # black rather than merely dark.
-        # Ambient kept low relative to the sun. Lifting it is the easy way to
-        # avoid black shadows and the reliable way to kill all the modelling.
-        ambient = np.asarray(sky.horizon, np.float32)[None, :] * 0.22
-        sun_light = np.asarray(sky.sun_tint, np.float32)[None, :] * 1.75 * sky.daylight
-
-        lit = colour * (ambient + sun_light * lambert * shade)
-
-        if water.enabled:
-            depth = np.clip((water.level - ground) / 26.0, 0, 1)[:, None]
-            surface = np.asarray(water.colour, np.float32)[None, :]
-            # A flat sheen toward the sky where the water is deep.
-            sheen = np.asarray(sky.horizon, np.float32)[None, :] * 0.30
-            lit = lit * (1 - depth) + (surface + sheen) * depth
-
-        # Atmospheric perspective. Exponential, keyed to distance, toward the
-        # sky in that direction so the fade matches what is behind it.
-        fog = 1.0 - np.exp(-(distance[idx][:, None] / 3800.0) ** 1.15 * sky.haze)
-        lit = lit * (1 - fog) + _sky_colour(direction[idx], sky) * fog
-
-        image[idx] = lit
-
-    image = image.reshape(h, w, 3)
-    if supersample > 1:
-        image = image.reshape(height, supersample, width, supersample, 3).mean(axis=(1, 3))
-
-    # Filmic-ish curve, so bright sky rolls off instead of clipping flat.
-    image = image / (image + 1.05)
-    image = np.clip(image * 1.42, 0.0, 1.0) ** (1.0 / 2.2)
-
-    # Tone mapping compresses all three channels alike, which drains colour
-    # along with the highlights. A little saturation put back afterwards is
-    # what keeps the vegetation green rather than grey.
-    luma = (image @ np.array([0.2126, 0.7152, 0.0722], np.float32))[..., None]
-    image = np.clip(luma + (image - luma) * 1.35, 0.0, 1.0)
-    return image.astype(np.float32)
+    buffer = geometry(
+        width, height, terrain, camera, sky, steps, far, supersample, summit
+    )
+    return shade(
+        buffer,
+        Grade(
+            daylight=sky.daylight,
+            haze=sky.haze,
+            water_level=water.level if water.enabled else -1e9,
+            sun_tint=sky.sun_tint,
+            horizon=sky.horizon,
+            zenith=sky.zenith,
+        ),
+    )
 
 
 def sea_level(terrain: Terrain, quantile: float = 0.14, extent: float = 8000.0) -> float:
