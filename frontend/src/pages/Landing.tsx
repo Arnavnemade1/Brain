@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom'
 import { pageVariants } from '@/animations/motion'
 import { MemoryFilm } from '@/components/landing/MemoryFilm'
 import { Reveal } from '@/components/landing/Reveal'
+import { StateChannels } from '@/components/landing/StateChannels'
 import { PIPELINE_STAGES } from '@/types'
 
 /** Headline results. Every figure is measured; see backend/*.md. */
@@ -17,7 +18,7 @@ const RESULTS = [
   },
   { value: '72.6%', label: 'Detection precision', note: 'continuous decoding' },
   { value: '60.7%', label: 'Reward vs error', note: 'chance 50%' },
-  { value: '17.8%', label: 'Object in top 5', note: 'chance 2.5%' },
+  { value: '76.3%', label: 'Moving vs still', note: 'chance 50%' },
 ]
 
 const PRINCIPLES = [
@@ -60,13 +61,13 @@ export default function Landing() {
           </p>
 
           <div className="mt-10 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
-            <Link
-              to="/real"
+            <a
+              href="#place"
               className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-ink px-6 text-[0.9rem] font-medium whitespace-nowrap text-abyss transition-opacity hover:opacity-90"
             >
               See the reconstructions
               <ArrowRight className="size-3.5" />
-            </Link>
+            </a>
             <a
               href="#film"
               className="glass inline-flex h-11 items-center justify-center rounded-full px-6 text-[0.9rem] whitespace-nowrap text-ink transition-colors hover:border-ink/16"
@@ -118,39 +119,6 @@ export default function Landing() {
             />
           </Reveal>
         </section>
-
-        {/* ---------------------------------------------------------------- */}
-        {/* Real-world imagery                                                */}
-        {/* ---------------------------------------------------------------- */}
-        <section id="reallife" className="shell section-y scroll-mt-20">
-          <Reveal className="mx-auto mb-12 max-w-2xl text-center">
-            <p className="text-label mb-5">Real life</p>
-            <h2 className="text-[clamp(1.75rem,3.6vw,2.6rem)]">
-              The same engine, on photographs of the real world.
-            </h2>
-            <p className="mt-6 text-[0.98rem] leading-relaxed text-ink-muted">
-              Someone viewing real-world objects while EEG records. Left is the photograph
-              on screen. The other two panels are what the system retrieved from brain
-              activity alone — from a single glimpse, and from eight.
-            </p>
-          </Reveal>
-
-          <Reveal>
-            <MemoryFilm
-              src="/reallife-video.mp4"
-              poster="/reallife-video-poster.png"
-              label="Real-world photographs retrieved from EEG, beside the image actually viewed"
-              meta="sub-01 · 200 candidates · loops"
-              stats={[
-                ['Same object in top 5', '42.4% · chance 10%'],
-                ['Exact photo in top 5', '20.1% · chance 2.5%'],
-                ['Validation', 'shuffled + strict time split'],
-              ]}
-              note="What comes back reliably is the kind of thing seen, not which one. Watch the ranked strip: when a hat was on screen the answer is often a hat — a different hat, outlined blue rather than green."
-            />
-          </Reveal>
-        </section>
-
         {/* ---------------------------------------------------------------- */}
         {/* Physical action                                                   */}
         {/* ---------------------------------------------------------------- */}
@@ -180,6 +148,97 @@ export default function Landing() {
               ]}
               note="The right figure lights each limb by the decoder's odds, not by its single best guess — so uncertainty is shown rather than resolved. Across 20 subjects the exact action is 36.7% against 20% chance, ranging 24-60% between people."
             />
+          </Reveal>
+        </section>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* An environment, scored against the truth                          */}
+        {/* ---------------------------------------------------------------- */}
+        <section id="environment" className="shell section-y scroll-mt-20">
+          <Reveal className="mx-auto mb-12 max-w-2xl text-center">
+            <p className="text-label mb-5">An environment</p>
+            <h2 className="text-[clamp(1.75rem,3.6vw,2.6rem)]">
+              Identification is the wrong question to ask of EEG.
+            </h2>
+            <p className="mt-6 text-[0.98rem] leading-relaxed text-ink-muted">
+              Naming the object on screen works 7.6% of the time — far too weak to build a
+              world from. But regressed onto how the scene <em>looked</em> — its edges,
+              brightness, colour, contrast — the same recordings do far better. Two
+              landscapes: left graded from the photograph, right from brain activity alone.
+            </p>
+          </Reveal>
+
+          <Reveal>
+            <MemoryFilm
+              src="/environment-video.mp4"
+              poster="/environment-video-poster.png"
+              label="Two landscapes side by side, one graded from the photograph on screen and one from EEG alone"
+              meta="sub-01 · 60 s · truth vs decoded · loops"
+              stats={[
+                ['Edge density', 'r = 0.69 · shuffled 0.07'],
+                ['Luminance', 'r = 0.62 · shuffled −0.01'],
+                ['Per-moment agreement', 'r = 0.38'],
+              ]}
+              note="Same terrain, same camera, same sun — only appearance is decoded, and a property must clear r = 0.35 held-out before it is allowed to move anything. Scalp EEG carries how a scene looked far better than what was in it, which is why a landscape works where object reconstruction does not."
+            />
+          </Reveal>
+        </section>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* A place, from brain state                                         */}
+        {/* ---------------------------------------------------------------- */}
+        <section id="place" className="shell section-y scroll-mt-20">
+          <Reveal className="mx-auto mb-12 max-w-2xl text-center">
+            <p className="text-label mb-5">A place</p>
+            <h2 className="text-[clamp(1.75rem,3.6vw,2.6rem)]">
+              An environment that moves with the recording.
+            </h2>
+            <p className="mt-6 text-[0.98rem] leading-relaxed text-ink-muted">
+              Sixty seconds of continuous EEG from one person, rendered as terrain you
+              travel through. Light, air, colour, ground and the speed of travel all follow
+              the recording moment to moment.
+            </p>
+          </Reveal>
+
+          <Reveal>
+            <MemoryFilm
+              src="/memory-of-place.mp4"
+              poster="/memory-of-place-poster.png"
+              label="Terrain whose light, air and speed of travel follow a continuous EEG recording"
+              meta="sub-mit003 · 60 s · continuous EEG · loops"
+              stats={[
+                ['Channels driving it', '8 · all shown on frame'],
+                ['Directly measured', '2 of 8'],
+                ['Prediction accuracy', 'none claimed'],
+              ]}
+              note="Nothing here is predicted, so nothing here has an error bar. At 22.6 s alpha is high and the world recedes into haze at travel ×0.79; by 127.5 s alpha has dropped, the air clears and travel reaches ×1.27. The camera genuinely moves between them."
+            />
+          </Reveal>
+
+          <Reveal className="mx-auto mt-16 mb-10 max-w-2xl text-center">
+            <p className="text-label mb-5">What drives what</p>
+            <p className="text-[0.94rem] leading-relaxed text-ink-muted">
+              Every earlier reconstruction guessed at the world and carried an error bar for
+              it. This one guesses at nothing — band power is a reading, not a prediction.
+              The split below is the whole argument, so it is shown rather than summarised.
+            </p>
+          </Reveal>
+
+          <Reveal>
+            <StateChannels />
+          </Reveal>
+
+          <Reveal className="mx-auto mt-12 max-w-2xl">
+            <div className="glass rounded-panel p-7">
+              <p className="text-label mb-4 text-memory-300">The limitation</p>
+              <p className="text-[0.9rem] leading-relaxed text-ink-muted">
+                Nobody in this dataset was on a mountain. They were watching video clips in
+                a laboratory. The terrain is a fixed heightfield chosen before any EEG is
+                read, and it never varies — so the <em>place</em> is not decoded, the{' '}
+                <em>state</em> is. Closing that gap needs EEG recorded on location, with
+                synchronised point-of-view video to score against.
+              </p>
+            </div>
           </Reveal>
         </section>
 
@@ -264,10 +323,10 @@ export default function Landing() {
             </h2>
             <div className="mt-9 flex justify-center">
               <Link
-                to="/real"
+                to="/session"
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-ink px-6 text-[0.9rem] font-medium whitespace-nowrap text-abyss transition-opacity hover:opacity-90"
               >
-                Open the reconstructions
+                Open the pipeline
                 <ArrowRight className="size-3.5" />
               </Link>
             </div>

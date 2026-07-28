@@ -30,29 +30,6 @@ dims to show it. Nothing is drawn that was not decoded.
 
 ---
 
-## The same engine, on real-world imagery
-
-Not a game: **photographs of real things**, retrieved from brain activity
-alone while someone viewed them. Left is what was on screen; the other two
-panels are what the EEG recovered from a single glimpse and from eight.
-
-![real-life reconstruction](docs/reallife_video_frame.png)
-
-| Eight held-out viewings, 200 candidates | Result | Chance |
-| --- | --- | --- |
-| **Same object in the top 5** | **42.4%** | ~10% |
-| Exact photograph in the top 5 | 20.1% | 2.5% |
-| Exact photograph recovered | 7.6% | 0.5% |
-| Graded semantic similarity | 0.254 | 0.137 |
-
-**What comes back is the kind of thing seen, not which one.** When a hat was
-on screen the ranked strip often contains a hat — a different hat,
-photographed differently. Shuffled labels land on chance everywhere, and a
-strict time split does not collapse the result. Full write-up and controls:
-[`backend/REALLIFE.md`](backend/REALLIFE.md).
-
----
-
 ## An environment reconstructed from EEG
 
 Object identification is 7.6% exact — far too weak to build a world from. But

@@ -15,7 +15,6 @@ import Landing from '@/pages/Landing'
 // commits to entering the experience — keep them out of the landing bundle.
 const Session = lazy(() => import('@/pages/Session'))
 const Library = lazy(() => import('@/pages/Library'))
-const RealSubjects = lazy(() => import('@/pages/RealSubjects'))
 const MemoryDetail = lazy(() => import('@/pages/MemoryDetail'))
 
 function AppRoutes() {
@@ -26,7 +25,6 @@ function AppRoutes() {
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<Landing />} />
         <Route path="/session" element={<Session />} />
-        <Route path="/real" element={<RealSubjects />} />
         <Route path="/library" element={<Library />} />
         <Route path="/library/:sessionId" element={<MemoryDetail />} />
         <Route path="*" element={<Navigate to="/" replace />} />

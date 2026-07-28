@@ -1,5 +1,10 @@
 # Reconstructing real life
 
+
+> **Retired from the product.** The image-matching UI was removed: a ranked
+> strip of candidate photographs is a thin thing to look at, and the honest
+> result below is better read as a table than operated as a feature. The
+> analysis and its controls are kept here because the numbers are real.
 The gameplay reconstruction answers *what was happening*. This one answers
 *what was he looking at*, over a continuous stream of real-world photographs,
 moment by moment, in the order they were actually seen.

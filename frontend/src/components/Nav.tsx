@@ -5,7 +5,6 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 
 const LINKS = [
-  { to: '/real', label: 'Real EEG' },
   { to: '/session', label: 'Pipeline' },
   { to: '/library', label: 'Library' },
 ] as const
