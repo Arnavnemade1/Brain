@@ -11,5 +11,9 @@ __pycache__/
 !.env.example
 frontend/dist/
 
-# Downloaded EEG recordings (2.4 GB) — fetch with tools/fetch_dataset.py
-data/
+# Downloaded EEG recordings (~6.6 GB) — fetch with tools/fetch_*.py
+#
+# Root-anchored. An unanchored `data/` matches a directory of that name at any
+# depth, which silently swallowed frontend/src/data — the page built locally
+# off untracked files and would have failed on a fresh clone.
+/data/
