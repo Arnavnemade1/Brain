@@ -82,6 +82,14 @@ found wanting.
 place is not decoded, the state is. Details and what a real recording would
 need: [`backend/MEMORY_OF_PLACE.md`](backend/MEMORY_OF_PLACE.md).
 
+Whether that landform could stop being fixed is measured in
+[`backend/TERRAIN_FROM_EEG.md`](backend/TERRAIN_FROM_EEG.md). Per-cell
+correlation on a luminance grid stays above 0.45 out to 12×12, which looks
+like 144 recoverable heights and is not — the cells are correlated. Counting
+principal components instead, **nine of twelve survive**, about 80% of the
+variance. That is enough to earn broad landform and nowhere near enough for
+ridgelines.
+
 ---
 
 ## What the body was doing
