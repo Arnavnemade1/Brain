@@ -238,6 +238,13 @@ export default function Landing() {
                 <em>state</em> is. Closing that gap needs EEG recorded on location, with
                 synchronised point-of-view video to score against.
               </p>
+              <Link
+                to="/research"
+                className="mt-6 inline-flex items-center gap-2 text-[0.86rem] text-neural-300 transition-colors hover:text-neural-200"
+              >
+                How much landform EEG could specify — the measurement
+                <ArrowRight className="size-3.5" />
+              </Link>
             </div>
           </Reveal>
         </section>

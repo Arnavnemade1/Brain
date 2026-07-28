@@ -23,6 +23,7 @@ Run with::
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import warnings
 from pathlib import Path
@@ -121,6 +122,17 @@ def main() -> int:
     print(f"{'grid':>6} {'cells':>6} {'mean r':>8} {'best':>7} {'worst':>7} "
           f"{'shuffled':>9} {'above 0.35':>11}")
 
+    # Results are exported rather than only printed, so the write-up on the
+    # site reads the same numbers this run produced instead of transcribed
+    # ones. Transcription is where tables quietly drift from their source.
+    report: Dict = {
+        "bar": BAR,
+        "subjects": subjects,
+        "stimuli": len(numbers),
+        "resolutions": [],
+        "centred": {},
+        "components": [],
+    }
     rows: List[Tuple[int, float, float]] = []
     for side in RESOLUTIONS:
         grids = np.stack([luminance_grid(stimuli_dir / catalogue[n].filename, side) for n in numbers])
@@ -143,6 +155,16 @@ def main() -> int:
             f"{real.min():>7.3f} {np.abs(null).mean():>9.3f} {share * 100:>10.0f}%"
         )
         rows.append((side, float(real.mean()), share))
+        report["resolutions"].append({
+            "side": side,
+            "cells": side * side,
+            "meanR": float(real.mean()),
+            "best": float(real.max()),
+            "worst": float(real.min()),
+            "shuffled": float(np.abs(null).mean()),
+            "aboveBar": share,
+            "cellR": [float(v) for v in real],
+        })
 
     # --- how many *independent* degrees of freedom is that? ----------------
     #
@@ -170,6 +192,12 @@ def main() -> int:
         f"  cells with image mean removed : mean r {centred_r.mean():.3f}, "
         f"{np.mean(centred_r > BAR) * 100:.0f}% above {BAR}"
     )
+    report["centred"] = {
+        "side": side,
+        "meanR": float(centred_r.mean()),
+        "aboveBar": float(np.mean(centred_r > BAR)),
+        "cellR": [float(v) for v in centred_r],
+    }
 
     # 2. How many principal components of the grid are recoverable at all.
     standardised = grids - grids.mean(axis=0, keepdims=True)
@@ -192,10 +220,25 @@ def main() -> int:
             survivors += 1
         print(f"  {k + 1:>10} {variance[k] * 100:>8.1f}% {component_r[k]:>7.3f}{mark}")
 
+    report["components"] = [
+        {"index": k + 1, "variance": float(variance[k]), "r": float(component_r[k])}
+        for k in range(keep)
+    ]
+    report["survivors"] = survivors
+    report["componentsTested"] = keep
+
+    destination = (
+        Path(__file__).resolve().parent.parent.parent
+        / "frontend" / "src" / "data" / "spatial-limit.json"
+    )
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(json.dumps(report, indent=2))
+
     print(
         f"\n  {survivors} of {keep} components clear {BAR}. That is the honest count "
         f"of independent\n  spatial degrees of freedom, not the {side * side} cells."
     )
+    print(f"\n  wrote {destination}")
 
     # Deliberately not phrased as "N independent height values". The per-cell
     # table above would support that reading and the component table refutes

@@ -5,6 +5,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/cn'
 
 const LINKS = [
+  { to: '/research', label: 'Research' },
   { to: '/session', label: 'Pipeline' },
   { to: '/library', label: 'Library' },
 ] as const
