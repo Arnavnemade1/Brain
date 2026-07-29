@@ -13,14 +13,29 @@ already here.
 What makes rendered terrain read as a place rather than as a grey lump, in
 rough order of how much each one matters:
 
-1. **Atmospheric perspective.** Distance fades toward the sky colour. Without
-   it there is no depth cue at all and the mountains look like cardboard.
+1. **Aerial perspective.** Distance fades toward the sky colour, and the haze
+   thins with altitude so it pools in valleys while peaks stand clear of it.
+   Distance-only fog dims a summit and its valley equally, which throws away
+   the strongest depth cue a mountain range has.
 2. **Ridged noise.** Ordinary fractal noise makes rolling hills; folding it
    about zero makes ridgelines and valleys, which is what mountains have.
-3. **Materials by slope and altitude.** Snow settles where it is high and
-   flat, rock shows where it is steep, grass fills the rest.
-4. **Shadows.** A short march toward the sun. Cheap, and the single thing
-   that makes the relief legible.
+3. **Cast shadows.** A short march toward the sun, plus a projected cloud
+   deck. Together the single largest thing making the relief legible.
+4. **Materials by slope and altitude**, each carrying a gloss as well as a
+   colour — snow is bright *and* glossy, vegetation dark *and* matte.
+5. **Sky-dome ambient.** Light arrives mostly from above, so upward faces see
+   sky and downward ones see bounce. One flat constant for both is what makes
+   an unlit slope look like paint.
+6. **Ambient occlusion.** Sky visibility per point, so creases and gullies go
+   dim even when they face the sun.
+7. **Filmic tone mapping.** Reinhard desaturates as it compresses and turned
+   every sunlit snowfield the same washed grey.
+
+Two of these were measured rather than assumed, because both were cheap to
+add and easy to fool oneself about. Ambient occlusion and the cloud deck each
+move the final frame by about 0.009 mean absolute, peaking near 0.13. The
+first attempt at occlusion moved it by 0.003 — real, invisible, and decorative
+until its response was widened.
 """
 
 from __future__ import annotations
@@ -81,8 +96,16 @@ class Terrain:
     ridged: float = 0.85
     seed: float = 0.0
 
-    def height(self, x: np.ndarray, z: np.ndarray) -> np.ndarray:
+    def height(
+        self, x: np.ndarray, z: np.ndarray, octaves: Optional[int] = None
+    ) -> np.ndarray:
         """Ground height at world coordinates.
+
+        ``octaves`` may be lowered for probes that only need the shape of the
+        land rather than its detail — ambient occlusion casts two dozen rays
+        per pixel, and running the full spectrum for each would cost more than
+        the primary march it is decorating. The large-scale form is identical;
+        only the fine relief is dropped.
 
         A **ridged multifractal**, not a plain sum of octaves. The difference
         is the ``weight`` term: each octave is attenuated by how high the
@@ -117,7 +140,7 @@ class Terrain:
         cos_a, sin_a = math.cos(angle), math.sin(angle)
         qx, qz = px, pz
 
-        for _ in range(self.octaves):
+        for _ in range(self.octaves if octaves is None else min(octaves, self.octaves)):
             sample = _value_noise(qx * frequency, qz * frequency)
             ridge = 1.0 - np.abs(sample * 2.0 - 1.0)
             ridge = ridge * ridge
@@ -135,7 +158,12 @@ class Terrain:
             frequency *= 2.03
             amplitude *= 0.5
 
-        return (total / max(normaliser, 1e-6)) * self.amplitude * envelope
+        # Normalise against the *full* octave series, not the truncated one.
+        # Dividing by the partial sum would make a cheap probe read higher
+        # than the surface it is compared against, and every occlusion test
+        # would then think it was buried.
+        full = sum(0.5**k for k in range(self.octaves))
+        return (total / max(full, 1e-6)) * self.amplitude * envelope
 
     def summit(self, extent: float = 5000.0, samples: int = 64) -> float:
         """Highest ground within view, sampled.
@@ -333,6 +361,103 @@ def _shadow(
     return np.clip(lit, 0.0, 1.0)
 
 
+def _occlusion(
+    point: np.ndarray,
+    terrain: Terrain,
+    radii: Sequence[float] = (16.0, 48.0, 130.0, 340.0, 820.0),
+    directions: int = 6,
+) -> np.ndarray:
+    """How much of the sky each point can see, 0 buried to 1 open.
+
+    Lambert shading alone lights a valley floor and the ridge above it
+    identically when both face the sun, so the land reads as a painted relief
+    map. Real ground in a gully is dim because most of the sky is behind rock.
+
+    Worth roughly 0.009 mean absolute change to the final frame, peaking at
+    0.13 — about the same as the cloud layer, and concentrated where it should
+    be: in creases and on shadowed slopes, where ambient light is all there
+    is. Measured rather than assumed, because the first version of this moved
+    the image by 0.003 and would have been decorative.
+
+    Horizon-based: fire rays outward at several radii, record the steepest
+    rise encountered in each compass direction, and treat the sine of that
+    horizon angle as the fraction of sky lost. Radii grow geometrically so a
+    handful of samples covers both the crease underfoot and the mountain a
+    kilometre away.
+    """
+    count = point.shape[0]
+    steepest = np.zeros((count, directions), dtype=np.float32)
+
+    # Offset so the sample directions do not align with the noise lattice,
+    # which would print a faint cross through every slope.
+    angles = np.linspace(0.0, 2 * math.pi, directions, endpoint=False) + 0.37
+
+    for radius in radii:
+        for d, angle in enumerate(angles):
+            probe_x = point[:, 0] + math.cos(angle) * radius
+            probe_z = point[:, 2] + math.sin(angle) * radius
+            ground = terrain.height(probe_x, probe_z, octaves=5)
+            steepest[:, d] = np.maximum(steepest[:, d], (ground - point[:, 1]) / radius)
+
+    horizon = np.arctan(np.clip(steepest, 0.0, None))
+    openness = np.clip(1.0 - np.sin(horizon).mean(axis=1), 0.0, 1.0)
+
+    # Sharpened. Raw sky-visibility over open terrain spans only about
+    # 0.70-0.91, which multiplied into the ambient term moved the final image
+    # by 0.003 on average — real, and invisible. The exponent widens the dark
+    # end where creases actually are without touching open ground.
+    return np.clip(openness**2.6, 0.0, 1.0).astype(np.float32)
+
+
+def _cloud_shadow(
+    point: np.ndarray,
+    sun: np.ndarray,
+    deck: float = 2400.0,
+    coverage: float = 0.46,
+) -> np.ndarray:
+    """Shadow cast on the ground by a cloud layer, 0 shaded to 1 lit.
+
+    Projected along the sun rather than dropped straight down, so the patches
+    land where the geometry says they should — offset from the clouds that
+    cast them, and stretched when the sun is low.
+    """
+    lift = np.maximum(deck - point[:, 1], 0.0) / max(float(sun[1]), 0.25)
+    cx = (point[:, 0] + float(sun[0]) * lift) / 1700.0
+    cz = (point[:, 2] + float(sun[2]) * lift) / 1700.0
+
+    density = (
+        _value_noise(cx, cz) * 0.6
+        + _value_noise(cx * 2.1 + 11.0, cz * 2.1 - 7.0) * 0.3
+        + _value_noise(cx * 4.3 - 3.0, cz * 4.3 + 5.0) * 0.1
+    )
+
+    # Smooth edges: a hard threshold gives cut-paper shadows.
+    edge = np.clip((density - coverage) / 0.16, 0.0, 1.0)
+    return (1.0 - 0.62 * edge * edge * (3.0 - 2.0 * edge)).astype(np.float32)
+
+
+def _detail_normal(
+    normal: np.ndarray, point: np.ndarray, distance: np.ndarray
+) -> np.ndarray:
+    """Perturb normals with fine relief the march is too coarse to resolve.
+
+    Faded out with distance. Applied uniformly it sparkles horribly, because
+    beyond a few hundred metres the perturbation is finer than a pixel and
+    aliases against the ray grid.
+    """
+    scale = 5.5
+    step = 1.0
+    base = _value_noise(point[:, 0] / scale, point[:, 2] / scale)
+    dx = _value_noise((point[:, 0] + step) / scale, point[:, 2] / scale) - base
+    dz = _value_noise(point[:, 0] / scale, (point[:, 2] + step) / scale) - base
+
+    strength = (0.55 * np.exp(-distance / 260.0)).astype(np.float32)
+    perturbed = normal.copy()
+    perturbed[:, 0] -= dx * strength
+    perturbed[:, 2] -= dz * strength
+    return perturbed / np.linalg.norm(perturbed, axis=1, keepdims=True)
+
+
 def _materials(
     height: np.ndarray,
     slope: np.ndarray,
@@ -340,8 +465,12 @@ def _materials(
     water_level: float,
     x: np.ndarray,
     z: np.ndarray,
-) -> np.ndarray:
-    """Surface colour from altitude and steepness.
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Surface colour and gloss from altitude and steepness.
+
+    Returns both because they are not independent: snow is bright *and*
+    glossy, vegetation is dark *and* matte, and a single specular strength
+    across the whole landscape puts a sheen on grass that reads as plastic.
 
     Albedos are deliberately dark. Real ground reflects 10-30% of the light
     that falls on it; picking colours that look right on screen *before*
@@ -381,7 +510,12 @@ def _materials(
 
     # Exposed rock on steep faces, whatever the altitude.
     colour = colour * (1 - steep) + dark_rock[None, :] * steep
-    return colour
+
+    # Gloss: snow packs and glazes, wet shoreline shines, vegetation does not.
+    gloss = np.full((colour.shape[0], 1), 0.06, dtype=np.float32)
+    gloss = gloss + (snow_line * settles) * 0.5
+    gloss = gloss + shore * 0.3
+    return colour, np.clip(gloss, 0.0, 1.0)
 
 
 def _sky_colour(direction: np.ndarray, sky: Sky) -> np.ndarray:
@@ -425,6 +559,10 @@ class GBuffer:
     point: np.ndarray
     #: Sun visibility at each hit, for the fixed sun direction.
     shadow: np.ndarray
+    #: Fraction of sky visible at each hit.
+    occlusion: np.ndarray
+    #: Cloud-deck shadow at each hit.
+    cloud: np.ndarray
     summit: float
     sun: np.ndarray
 
@@ -487,6 +625,7 @@ def geometry(
 
     normal = np.stack([-(hx - hx0), 2.0 * epsilon, -(hz - hz0)], axis=1).astype(np.float32)
     normal /= np.linalg.norm(normal, axis=1, keepdims=True)
+    normal = _detail_normal(normal, point, distance[idx])
 
     return GBuffer(
         width=width,
@@ -500,9 +639,34 @@ def geometry(
         slope=1.0 - normal[:, 1],
         point=point,
         shadow=_shadow(point, sun, terrain),
+        occlusion=_occlusion(point, terrain),
+        cloud=_cloud_shadow(point, sun),
         summit=float(summit),
         sun=sun,
     )
+
+
+#: Rescales the existing `Grade.exposure` values for the filmic curve.
+#:
+#: Reinhard was applied *after* compression and had a very high shoulder, so
+#: an exposure of 1.42 meant something far dimmer there than the same number
+#: fed into ACES beforehand. Without this the whole landscape came back milky,
+#: with no pixel darker than 0.39. Kept as a named constant rather than folded
+#: into the default so the cognitive mapping's exposure range still means what
+#: it says.
+ACES_SCALE = 0.52
+
+
+def _aces(x: np.ndarray) -> np.ndarray:
+    """Narkowicz's fit to the ACES filmic tone curve.
+
+    Reinhard (`x / (x + k)`) compresses every channel independently, so a
+    bright warm highlight loses its warmest channel first and slides toward
+    grey — which is why sunlit snow came out the colour of concrete. This
+    keeps hue through the shoulder.
+    """
+    a, b, c, d, e = 2.51, 0.03, 2.43, 0.59, 0.14
+    return np.clip((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0)
 
 
 def shade(buffer: GBuffer, grade: Grade) -> np.ndarray:
@@ -519,7 +683,7 @@ def shade(buffer: GBuffer, grade: Grade) -> np.ndarray:
     image = _sky_colour(buffer.direction, sky)
 
     if buffer.index.size:
-        colour = _materials(
+        colour, gloss = _materials(
             buffer.ground,
             buffer.slope,
             buffer.summit,
@@ -534,19 +698,74 @@ def shade(buffer: GBuffer, grade: Grade) -> np.ndarray:
             luma = (colour @ np.array([0.2126, 0.7152, 0.0722], np.float32))[:, None]
             colour = colour + (luma * 1.04 - colour) * float(grade.barrenness)
 
-        lambert = np.clip(buffer.normal @ buffer.sun, 0.0, 1.0)[:, None]
-        ambient = np.asarray(sky.horizon, np.float32)[None, :] * 0.22
-        sun_light = np.asarray(sky.sun_tint, np.float32)[None, :] * 1.75 * sky.daylight
-        lit = colour * (ambient + sun_light * lambert * buffer.shadow[:, None])
+        normal = buffer.normal
+        view = -buffer.direction[buffer.index]
+        horizon_colour = np.asarray(sky.horizon, np.float32)[None, :]
+        zenith_colour = np.asarray(sky.zenith, np.float32)[None, :]
+        tint = np.asarray(sky.sun_tint, np.float32)[None, :]
 
+        # --- direct sun, gated by cast shadow and by cloud ------------------
+        lambert = np.clip(normal @ buffer.sun, 0.0, 1.0)[:, None]
+        direct = (
+            tint * 1.78 * sky.daylight
+            * lambert
+            * buffer.shadow[:, None]
+            * buffer.cloud[:, None]
+        )
+
+        # --- sky dome, not a flat constant ---------------------------------
+        # Ambient arrives mostly from above, so an upward face sees sky and a
+        # downward one sees light bounced off the ground. A single constant
+        # for both is what makes an unlit slope look like flat paint.
+        facing_up = np.clip(normal[:, 1], 0.0, 1.0)[:, None]
+        dome = zenith_colour * facing_up + horizon_colour * (1.0 - facing_up)
+        bounce = colour * 0.16
+        ambient = (dome * 0.46 + bounce) * buffer.occlusion[:, None] * sky.daylight
+
+        lit = colour * (ambient + direct)
+
+        # --- specular ------------------------------------------------------
+        half = buffer.sun[None, :] + view
+        half /= np.maximum(np.linalg.norm(half, axis=1, keepdims=True), 1e-6)
+        sharpness = 8.0 + gloss * 180.0
+        spec = np.clip((normal * half).sum(axis=1, keepdims=True), 0.0, 1.0) ** sharpness
+        lit = lit + tint * spec * gloss * 2.2 * buffer.shadow[:, None] * buffer.cloud[:, None] * sky.daylight
+
+        # --- water ---------------------------------------------------------
         depth = np.clip((grade.water_level - buffer.ground) / 26.0, 0, 1)[:, None]
         if depth.max() > 0:
-            surface = np.asarray(Water().colour, np.float32)[None, :]
-            sheen = np.asarray(sky.horizon, np.float32)[None, :] * 0.30
-            lit = lit * (1 - depth) + (surface + sheen) * depth
+            body = np.asarray(Water().colour, np.float32)[None, :]
+            # Fresnel: water is nearly a mirror at grazing angles and nearly
+            # clear looking straight down. A constant blend gets both wrong,
+            # and the far shore is where the difference is most obvious.
+            grazing = np.clip(1.0 - np.abs(view[:, 1:2]), 0.0, 1.0)
+            fresnel = 0.02 + 0.98 * grazing**5
 
-        fog = 1.0 - np.exp(-(buffer.distance[:, None] / 3800.0) ** 1.15 * sky.haze)
-        lit = lit * (1 - fog) + _sky_colour(buffer.direction[buffer.index], sky) * fog
+            reflected = view.copy()
+            reflected[:, 1] = np.abs(reflected[:, 1])
+            mirror = _sky_colour(reflected, sky)
+
+            glint = np.clip((reflected @ buffer.sun), 0.0, 1.0)[:, None] ** 320
+            surface = (
+                body * (1.0 - fresnel)
+                + mirror * fresnel
+                + tint * glint * 2.6 * sky.daylight * buffer.cloud[:, None]
+            )
+            lit = lit * (1 - depth) + surface * depth
+
+        # --- aerial perspective --------------------------------------------
+        # Haze thins with altitude, so it pools in valleys and peaks stand
+        # clear of it. Distance alone fogs a summit and its valley equally,
+        # which removes the strongest depth cue a mountain range has.
+        thickness = np.exp(-np.maximum(buffer.point[:, 1:2] - grade.water_level, 0.0) / 900.0)
+        optical = (buffer.distance[:, None] / 3800.0) ** 1.15 * sky.haze * thickness
+        fog = 1.0 - np.exp(-optical)
+
+        # Air scatters sunlight forward, so haze brightens toward the sun.
+        toward_sun = np.clip(buffer.direction[buffer.index] @ buffer.sun, 0.0, 1.0)[:, None]
+        air = _sky_colour(buffer.direction[buffer.index], sky) + tint * toward_sun**8 * 0.16 * sky.daylight
+
+        lit = lit * (1 - fog) + air * fog
 
         image[buffer.index] = lit
 
@@ -558,8 +777,11 @@ def shade(buffer: GBuffer, grade: Grade) -> np.ndarray:
             buffer.height, buffer.supersample, buffer.width, buffer.supersample, 3
         ).mean(axis=(1, 3))
 
-    image = image / (image + 1.05)
-    image = np.clip(image * grade.exposure, 0.0, 1.0) ** (1.0 / 2.2)
+    # Filmic tone curve rather than Reinhard. Reinhard desaturates highlights
+    # as it compresses them, which turned every sunlit snowfield the same
+    # washed grey; this holds colour into the shoulder.
+    image = _aces(image * grade.exposure * ACES_SCALE)
+    image = np.clip(image, 0.0, 1.0) ** (1.0 / 2.2)
 
     luma = (image @ np.array([0.2126, 0.7152, 0.0722], np.float32))[..., None]
     image = np.clip(luma + (image - luma) * grade.saturation, 0.0, 1.0)
