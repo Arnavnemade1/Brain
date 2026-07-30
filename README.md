@@ -153,14 +153,22 @@ where the subject clicked to say they felt something.
 
 ![emotion frame](docs/emotion_frame.png)
 
-**The video renders correctly. The decoding underneath it largely does not.**
+**The video renders correctly. The decoding underneath it does not.**
 Cross-subject emotion decoding failed outright — the shuffled control scored
-*higher* than the real model (38.9% vs 34.7% on quadrant). Within-subject,
-arousal is weakly readable (r = +0.19, 58.8% balanced) and valence is not
-readable at all (42.8% balanced, below chance).
+*higher* than the real model (38.9% vs 34.7% on quadrant).
 
-That negative result, the two measurement errors found while getting to it, and
-what would be needed to fix it: [`backend/EMOTION.md`](backend/EMOTION.md).
+A later 294-correlation search over every feature, three targets, permutation
+nulls and FDR finds **nothing** surviving: 19 hits at uncorrected p < 0.05
+against 15 expected by chance. And adding the shuffled control that the
+within-subject regime never had shows the shuffle beating the real model there
+too — **63.1% against 58.8%** — so the earlier claim that "arousal is weakly
+readable within a calibrated subject" is **withdrawn**. Nothing affective is
+decoded on this dataset in any regime tested.
+
+The wide search and the withdrawn claim:
+[`backend/EMOTION_CORRELATION.md`](backend/EMOTION_CORRELATION.md). The
+original negative result and the two measurement errors found reaching it:
+[`backend/EMOTION.md`](backend/EMOTION.md).
 
 ---
 

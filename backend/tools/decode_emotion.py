@@ -24,6 +24,8 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
+from dataclasses import replace
+
 warnings.filterwarnings("ignore")
 sys.path.insert(0, ".")
 logging.basicConfig(level=logging.INFO, format="  %(message)s")
@@ -69,20 +71,46 @@ def balanced_accuracy(predicted: np.ndarray, actual: np.ndarray) -> float:
     return float(np.mean(rates)) if rates else 0.0
 
 
-def within_subject(trials: List[TrialFeatures], alpha: float = 50.0) -> Dict:
+def within_subject(
+    trials: List[TrialFeatures],
+    alpha: float = 50.0,
+    shuffle: bool = False,
+    seed: int = 0,
+) -> Dict:
     """Leave-one-trial-out inside each subject.
 
     A different and easier question than cross-subject transfer: "given a
     calibration session from this person, can their emotion be read?" Most
     published emotion-recognition accuracies are of this kind, so it is
     reported separately rather than blended with the cross-subject numbers.
+
+    ``shuffle`` permutes the ratings within each subject. This control was
+    missing when the regime was first reported, and it is not optional here:
+    leave-one-out over ten trials biases the correlation *downward* on its own,
+    because dropping one sample pulls the training mean away from the held-out
+    value. Without a control there is no way to tell how much of any number is
+    that bias rather than signal, and "chance = 0" is an assumption rather than
+    a measurement.
     """
     predicted_v, actual_v, predicted_a, actual_a = [], [], [], []
+    rng = np.random.default_rng(seed)
 
     for subject in sorted({t.subject for t in trials}):
         own = [t for t in trials if t.subject == subject]
         if len(own) < 4:
             continue
+
+        if shuffle:
+            # Reassign this subject's ratings among their own trials, so the
+            # per-subject design and rating distribution both survive.
+            ratings = [(t.valence, t.arousal) for t in own]
+            rng.shuffle(ratings)
+            relabelled = []
+            for trial, (valence, arousal) in zip(own, ratings):
+                clone = replace(trial, valence=valence, arousal=arousal)
+                relabelled.append(clone)
+            own = relabelled
+
         for held in range(len(own)):
             train = [t for i, t in enumerate(own) if i != held]
             test = own[held]
@@ -310,6 +338,7 @@ def main() -> int:
 
     print("\n  Within-subject (leave-one-trial-out; easier question, reported separately)")
     within = within_subject(trials, alpha=args.alpha)
+    within_control = within_subject(trials, alpha=args.alpha, shuffle=True)
     print(
         f"    valence   r = {within['valence_r']:+.3f}   "
         f"balanced {within['valence_accuracy'] * 100:5.1f}%"
@@ -317,6 +346,15 @@ def main() -> int:
     print(
         f"    arousal   r = {within['arousal_r']:+.3f}   "
         f"balanced {within['arousal_accuracy'] * 100:5.1f}%   (n={within['n_trials']})"
+    )
+    print("  within-subject, shuffled control:")
+    print(
+        f"    valence   r = {within_control['valence_r']:+.3f}   "
+        f"balanced {within_control['valence_accuracy'] * 100:5.1f}%"
+    )
+    print(
+        f"    arousal   r = {within_control['arousal_r']:+.3f}   "
+        f"balanced {within_control['arousal_accuracy'] * 100:5.1f}%"
     )
 
     print("\n  Per-moment check — decoded intensity around the felt-emotion click")
@@ -339,6 +377,7 @@ def main() -> int:
                 "real": real,
                 "shuffled": control,
                 "within_subject": within,
+                "within_subject_shuffled": within_control,
                 "click_alignment": alignment,
             },
             indent=1

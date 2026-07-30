@@ -164,10 +164,10 @@ export const DOMAINS: Domain[] = [
   {
     id: 'emotion',
     eyebrow: 'Affect',
-    title: 'Cross-subject emotion decoding failed.',
+    title: 'Emotion decoding fails in every regime tested.',
     summary:
-      'Forty people watching emotionally evocative film clips. A model fitted on eight of them does not read the ninth: the shuffled control scored higher than the real model on the four-way quadrant task. Within a calibrated subject, arousal is weakly readable and valence is not readable at all.',
-    source: 'backend/EMOTION.md',
+      'Forty people watching emotionally evocative film clips. A model fitted on eight of them does not read the ninth — the shuffled control scored higher than the real model. A later 294-correlation search found nothing surviving correction, and adding the missing control to the within-subject regime showed the shuffle beats the real model there too. Nothing affective is decoded here in any regime tested.',
+    source: 'backend/EMOTION_CORRELATION.md',
     dataset: 'ds003751 · 9 subjects · 95 trials',
     findings: [
       {
@@ -184,10 +184,18 @@ export const DOMAINS: Domain[] = [
       {
         label: 'Arousal, within subject',
         value: 0.588,
-        chance: 0.5,
+        chance: 0.631,
         unit: 'accuracy',
-        status: 'weak',
-        note: 'The one affective reading that survives, and only with per-person calibration.',
+        status: 'fails',
+        note: 'Previously reported as the one surviving affective reading, against an assumed 50% chance. Its shuffled control scores 63.1% — leave-one-out over ten trials is inflated on its own — so the real model sits below its own baseline. Claim withdrawn.',
+      },
+      {
+        label: 'Widest search: 294 correlations',
+        value: 0.0,
+        chance: 0.0,
+        unit: 'r',
+        status: 'fails',
+        note: '98 predictors x 3 targets, permutation nulls, FDR. Zero survive at q < 0.05; 19 hits at uncorrected p < 0.05 against 15 expected by chance.',
       },
     ],
   },

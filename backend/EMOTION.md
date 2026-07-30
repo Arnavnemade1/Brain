@@ -46,16 +46,30 @@ people does not read the ninth.
 
 Within-subject, with the model calibrated on that person's own other trials:
 
-| Within-subject (leave-one-trial-out) | Result | Chance |
+| Within-subject (leave-one-trial-out) | Result | **Shuffled control** |
 | --- | --- | --- |
-| Arousal correlation | **r = +0.19** | 0 |
-| Arousal, balanced accuracy | **58.8%** | 50% |
-| Valence correlation | r = +0.06 | 0 |
-| Valence, balanced accuracy | 42.8% | 50% |
+| Arousal correlation | +0.188 | **+0.220** |
+| Arousal, balanced accuracy | 58.8% | **63.1%** |
+| Valence correlation | +0.064 | −0.215 |
+| Valence, balanced accuracy | 42.8% | 33.1% |
 
-So: **arousal is weakly readable within a calibrated subject. Valence is not
-readable at all.** The rendered video uses within-subject calibration for that
-reason, and its footer says so on every frame.
+**This table previously claimed arousal was weakly readable within a
+calibrated subject — r = +0.19 at 58.8% against a stated chance of 50%. That
+claim is withdrawn.** It had no shuffled control: `within_subject()` took no
+`shuffle` argument, only the cross-subject path was controlled, and the 50%
+was an assumption rather than a measurement.
+
+Given one, the control scores **higher than the real model** on both arousal
+metrics — the same failure as the quadrant test above. And it scores above 50%,
+because leave-one-out over ten trials is structurally biased: dropping a sample
+pulls the training mean away from the held-out value. The real baseline for
+this regime is near 63%, and 58.8% sits below it.
+
+So there is no affective decoding here in either regime. The rendered video
+still uses within-subject calibration, but its footer should be read as saying
+which data fitted the model, not that the model works. Full account, including
+a 294-correlation search that also finds nothing:
+[EMOTION_CORRELATION.md](EMOTION_CORRELATION.md).
 
 ### The per-moment test also fails
 
