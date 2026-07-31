@@ -17,3 +17,6 @@ frontend/dist/
 # depth, which silently swallowed frontend/src/data — the page built locally
 # off untracked files and would have failed on a fresh clone.
 /data/
+# …except the catalogue, which is 392 KB of metadata rather than recordings,
+# and is the artifact CATALOGUE.md and any fetch decision are read from.
+!/data/catalogue/
