@@ -16,7 +16,9 @@ frontend/dist/
 # Root-anchored. An unanchored `data/` matches a directory of that name at any
 # depth, which silently swallowed frontend/src/data — the page built locally
 # off untracked files and would have failed on a fresh clone.
-/data/
-# …except the catalogue, which is 392 KB of metadata rather than recordings,
-# and is the artifact CATALOGUE.md and any fetch decision are read from.
+# Contents, not the directory itself: git does not descend into an excluded
+# directory, so a `!` negation under `/data/` can never re-include anything.
+/data/*
+# The catalogue is 392 KB of metadata rather than recordings, and is the
+# artifact CATALOGUE.md quotes and any fetch decision is made from.
 !/data/catalogue/
