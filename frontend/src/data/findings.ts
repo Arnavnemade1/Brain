@@ -136,6 +136,22 @@ export const DOMAINS: Domain[] = [
         status: 'weak',
         note: 'Whole-scene, decoded against true grading.',
       },
+      {
+        label: 'Occipital sites only (8 ch)',
+        value: 0.663,
+        chance: 0.07,
+        unit: 'r',
+        status: 'works',
+        note: 'Edge density. Beats the 19-channel 10-20 montage (0.636) with fewer than half the electrodes — placement dominates count.',
+      },
+      {
+        label: 'Frontal pole, ocular control',
+        value: 0.329,
+        chance: 0.07,
+        unit: 'r',
+        status: 'weak',
+        note: 'Half what occipital carries. Rules out the eye-movement artifact that "luminance decodes" would otherwise be.',
+      },
     ],
   },
   {
